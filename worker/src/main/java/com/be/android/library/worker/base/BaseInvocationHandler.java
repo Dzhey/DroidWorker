@@ -1,0 +1,97 @@
+package com.be.android.library.worker.base;
+
+import com.be.android.library.worker.interfaces.Job;
+
+import java.util.List;
+
+public abstract class BaseInvocationHandler implements InvocationHandler {
+
+    protected abstract Class<?> getPendingJobType();
+    protected abstract JobStatus[] getPendingStatus();
+    protected abstract int[] getPendingEventCode();
+    protected abstract String[] getPendingTags();
+    protected abstract void invokeEventHandler(Object receiver, JobEvent event) throws Exception;
+
+    protected boolean checkPendingJobType(JobEvent event) {
+        Class<?> pendingJobType = getPendingJobType();
+
+        if (pendingJobType == null || pendingJobType.equals(Job.class)) {
+            return true;
+        }
+
+        return pendingJobType.equals(event.getJob().getClass());
+    }
+
+    protected boolean checkPendingStatus(JobEvent event) {
+        final JobStatus[] pendingStatus = getPendingStatus();
+
+        if (pendingStatus == null || pendingStatus.length == 0) {
+            return true;
+        }
+
+        boolean isStatusMatched = false;
+        for (JobStatus status : pendingStatus) {
+            if (status == event.getJobStatus()) {
+                isStatusMatched = true;
+                break;
+            }
+        }
+
+        return isStatusMatched;
+    }
+
+    protected boolean checkPendingEventCode(JobEvent event) {
+        final int[] pendingEventCode = getPendingEventCode();
+
+        if (pendingEventCode == null || pendingEventCode.length == 0) {
+            return true;
+        }
+
+        boolean isEventCodeMatched = false;
+        for (int eventCode : pendingEventCode) {
+            if (eventCode == event.getEventCode()) {
+                isEventCodeMatched = true;
+                break;
+            }
+        }
+
+        return isEventCodeMatched;
+    }
+
+    protected boolean checkPendingTags(JobEvent event) {
+        final String[] pendingTags = getPendingTags();
+
+        if (pendingTags == null || pendingTags.length == 0) {
+            return true;
+        }
+
+        final List<String> jobTags = event.getJobTags();
+
+        for (String pendingTag : pendingTags) {
+            if (jobTags.contains(pendingTag) == false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean canApply(Object receiver, JobEvent event) {
+        return checkPendingStatus(event)
+                && checkPendingJobType(event)
+                && checkPendingEventCode(event)
+                && checkPendingTags(event);
+    }
+
+    @Override
+    public boolean apply(Object receiver, JobEvent event) throws Exception {
+        if (canApply(receiver, event) == false) {
+            return false;
+        }
+
+        invokeEventHandler(receiver, event);
+
+        return true;
+    }
+}
