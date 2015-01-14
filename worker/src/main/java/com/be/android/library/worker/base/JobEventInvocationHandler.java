@@ -8,20 +8,19 @@ public class JobEventInvocationHandler extends BaseInvocationHandler {
 
     public static Class<OnJobEvent> ANNOTATION_TYPE = OnJobEvent.class;
 
-    private Method mMethod;
     private JobStatus[] mPendingStatus;
     private int[] mPendingEventCode;
     private String[] mPendingTags;
     private Class<?> mPendingJobType;
 
     public JobEventInvocationHandler(Method method) {
-        mMethod = method;
+        super(method);
 
-        OnJobEvent annotation = mMethod.getAnnotation(OnJobEvent.class);
+        OnJobEvent annotation = method.getAnnotation(ANNOTATION_TYPE);
         if (annotation == null) {
             throw new RuntimeException(String.format(
                     "no annotation '%s' found on method '%s'",
-                    OnJobEvent.class.getName(), method.getName()));
+                    ANNOTATION_TYPE.getName(), method.getName()));
         }
 
         mPendingJobType = annotation.jobType();
@@ -48,10 +47,5 @@ public class JobEventInvocationHandler extends BaseInvocationHandler {
     @Override
     protected String[] getPendingTags() {
         return mPendingTags;
-    }
-
-    @Override
-    protected void invokeEventHandler(Object receiver, JobEvent event) throws Exception {
-        mMethod.invoke(receiver, event);
     }
 }

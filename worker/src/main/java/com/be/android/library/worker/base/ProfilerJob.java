@@ -47,7 +47,7 @@ public class ProfilerJob extends BaseJob {
         }
 
         @Override
-        public JobEvent executeImpl() {
+        public JobEvent executeImpl() throws Exception {
             return ProfilerJob.this.executeImpl();
         }
     };
@@ -178,7 +178,7 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    protected JobEvent executeImpl() {
+    protected JobEvent executeImpl() throws Exception {
         final long startRealtimeMillis = SystemClock.elapsedRealtime();
         mExecuteImplStartTimeMillis = System.currentTimeMillis();
 

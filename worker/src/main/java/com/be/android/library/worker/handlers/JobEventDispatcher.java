@@ -9,8 +9,11 @@ import android.util.Log;
 
 import com.be.android.library.worker.base.HierarchyViewer;
 import com.be.android.library.worker.base.InvocationHandler;
+import com.be.android.library.worker.base.JobCancelInvocationHandlerProvider;
 import com.be.android.library.worker.base.JobEventInvocationHandlerProvider;
+import com.be.android.library.worker.base.JobFailureInvocationHandlerProvider;
 import com.be.android.library.worker.base.JobResultInvocationHandlerProvider;
+import com.be.android.library.worker.base.JobSuccessInvocationHandlerProvider;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.interfaces.Job;
@@ -68,6 +71,9 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         mHierarchyViewer = new HierarchyViewer(context);
         mHierarchyViewer.registerInvocationHandlerProvider(new JobEventInvocationHandlerProvider());
         mHierarchyViewer.registerInvocationHandlerProvider(new JobResultInvocationHandlerProvider());
+        mHierarchyViewer.registerInvocationHandlerProvider(new JobSuccessInvocationHandlerProvider());
+        mHierarchyViewer.registerInvocationHandlerProvider(new JobFailureInvocationHandlerProvider());
+        mHierarchyViewer.registerInvocationHandlerProvider(new JobCancelInvocationHandlerProvider());
     }
 
     /**

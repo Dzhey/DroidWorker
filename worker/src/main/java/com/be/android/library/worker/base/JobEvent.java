@@ -67,7 +67,7 @@ public class JobEvent {
                 null);
     }
 
-    protected JobEvent(int eventCode) {
+    public JobEvent(int eventCode) {
         this(JobManager.JOB_ID_UNSPECIFIED,
                 JobManager.JOB_GROUP_DEFAULT,
                 eventCode,

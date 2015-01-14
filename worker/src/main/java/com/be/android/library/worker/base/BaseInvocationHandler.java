@@ -2,15 +2,32 @@ package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.interfaces.Job;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 public abstract class BaseInvocationHandler implements InvocationHandler {
+
+    private final List<EventHandlerInvoker> mInvokers;
+    private EventHandlerInvoker mApplicableInvoker;
 
     protected abstract Class<?> getPendingJobType();
     protected abstract JobStatus[] getPendingStatus();
     protected abstract int[] getPendingEventCode();
     protected abstract String[] getPendingTags();
-    protected abstract void invokeEventHandler(Object receiver, JobEvent event) throws Exception;
+
+    protected BaseInvocationHandler(Method method) {
+        mInvokers = new ArrayList<EventHandlerInvoker>();
+        mInvokers.add(new PolymorphicEventHandlerInvoker(method));
+    }
+
+    public void addEventHandlerInvoker(EventHandlerInvoker invoker) {
+        mInvokers.add(0, invoker);
+    }
+
+    public boolean removeEventHandlerInvoker(EventHandlerInvoker invoker) {
+        return mInvokers.remove(invoker);
+    }
 
     protected boolean checkPendingJobType(JobEvent event) {
         Class<?> pendingJobType = getPendingJobType();
@@ -78,19 +95,40 @@ public abstract class BaseInvocationHandler implements InvocationHandler {
 
     @Override
     public boolean canApply(Object receiver, JobEvent event) {
-        return checkPendingStatus(event)
-                && checkPendingJobType(event)
-                && checkPendingEventCode(event)
-                && checkPendingTags(event);
+        if (!checkPendingStatus(event)
+                || !checkPendingJobType(event)
+                || !checkPendingEventCode(event)
+                || !checkPendingTags(event)
+                || mInvokers.isEmpty()) {
+
+            return false;
+        }
+
+        for (EventHandlerInvoker invoker : mInvokers) {
+            if (invoker.isApplicable(event)) {
+                mApplicableInvoker = invoker;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
     public boolean apply(Object receiver, JobEvent event) throws Exception {
+        if (mApplicableInvoker != null
+                && mApplicableInvoker.isApplicable(event)) {
+
+            mApplicableInvoker.invoke(receiver, event);
+
+            return true;
+        }
+
         if (canApply(receiver, event) == false) {
             return false;
         }
 
-        invokeEventHandler(receiver, event);
+        mApplicableInvoker.invoke(receiver, event);
 
         return true;
     }

@@ -27,7 +27,7 @@ public abstract class BaseJob extends JobObservable {
         public JobEvent execute();
         public void onPostExecute(JobEvent executionResult);
         public void onExceptionCaughtBase(Exception e);
-        public JobEvent executeImpl();
+        public JobEvent executeImpl() throws Exception;
     }
 
     public static final String LOG_TAG = BaseJob.class.getSimpleName();
@@ -90,7 +90,7 @@ public abstract class BaseJob extends JobObservable {
             }
 
             @Override
-            public JobEvent executeImpl() {
+            public JobEvent executeImpl() throws Exception {
                 return BaseJob.this.executeImpl();
             }
         };
@@ -547,7 +547,7 @@ public abstract class BaseJob extends JobObservable {
     protected void onPostExecute(JobEvent executionResult) {
     }
 
-    protected abstract JobEvent executeImpl();
+    protected abstract JobEvent executeImpl() throws Exception;
 
     @Override
     public boolean equals(Object o) {
