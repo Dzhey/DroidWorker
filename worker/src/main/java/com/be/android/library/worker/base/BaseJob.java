@@ -138,7 +138,10 @@ public abstract class BaseJob extends JobObservable {
         if (mStatus == status) return;
 
         setStatusSilent(status);
-        notifyJobEvent(new JobEvent(JobEvent.UPDATE_CODE_STATUS_CHANGED, mStatus));
+        notifyJobEvent(new JobEvent(
+                JobEvent.EVENT_CODE_UPDATE,
+                JobEvent.EXTRA_CODE_STATUS_CHANGED,
+                mStatus));
     }
 
     protected void setStatusSilent(JobStatus status) {
@@ -214,8 +217,6 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public void addTag(String tag) {
-        if (tag == null) return;
-
         final Lock lock = mTagsLock.writeLock();
 
         lock.lock();
@@ -412,7 +413,7 @@ public abstract class BaseJob extends JobObservable {
 
             if (jobEvent.isJobIdAssigned()) {
                 throw new JobExecutionException("job execution result may not define job id; " +
-                        "make sure to not return another job's result from hosting job");
+                        "make sure to not return another job's result from this job");
             }
 
             final int resultCode = jobEvent.getEventCode();
@@ -423,8 +424,8 @@ public abstract class BaseJob extends JobObservable {
                         "status; result status: '%s'", JobStatus.OK, JobStatus.FAILED, status));
             }
 
-            if ((resultCode == JobEvent.RESULT_CODE_OK && status == JobStatus.FAILED)
-                    || (resultCode == JobEvent.RESULT_CODE_FAILED && status == JobStatus.OK)) {
+            if ((resultCode == JobEvent.EVENT_CODE_OK && status == JobStatus.FAILED)
+                    || (resultCode == JobEvent.EVENT_CODE_FAILED && status == JobStatus.OK)) {
 
                 throw new JobExecutionException(String.format("inconsistent job result code " +
                         "and status returned; result: %d, status: %s", resultCode, status));
@@ -445,7 +446,7 @@ public abstract class BaseJob extends JobObservable {
                 mIsCancelled = true;
                 setStatusSilent(JobStatus.CANCELLED);
 
-                jobEvent = new JobEvent(JobEvent.RESULT_CODE_CANCELLED);
+                jobEvent = new JobEvent(JobEvent.EVENT_CODE_CANCELLED);
                 mIsFinished = true;
                 notifyJobEvent(jobEvent);
 
@@ -453,7 +454,7 @@ public abstract class BaseJob extends JobObservable {
             }
 
             setStatusSilent(JobStatus.FAILED);
-            jobEvent = new JobEvent(JobEvent.RESULT_CODE_FAILED);
+            jobEvent = new JobEvent(JobEvent.EVENT_CODE_FAILED);
             jobEvent.setUncaughtException(e);
 
             mIsFinished = true;
@@ -464,7 +465,7 @@ public abstract class BaseJob extends JobObservable {
 
         if (isCancelled()) {
             setStatusSilent(JobStatus.CANCELLED);
-            jobEvent.setEventCode(JobEvent.RESULT_CODE_CANCELLED);
+            jobEvent.setEventCode(JobEvent.EVENT_CODE_CANCELLED);
         } else {
             setStatusSilent(jobEvent.getJobStatus());
         }
@@ -487,11 +488,11 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public void notifyJobEvent(JobEvent event) {
-        event.setJobId(getJobId());
-        event.setJobGroupId(getGroupId());
-        event.setJobTags(getTags());
-        event.setJobStatus(getStatus());
-        event.setJobFinished(isFinished());
+        event.setJobId(mId);
+        event.setJobGroupId(mGroupId);
+        event.setJobTags(mTags);
+        event.setJobStatus(mStatus);
+        event.setJobFinished(mIsFinished);
         event.setJob(this);
 
         notifyJobEventImpl(event);
@@ -503,11 +504,15 @@ public abstract class BaseJob extends JobObservable {
 
     /**
      * Construct job event with specified extra message and
-     * event code of {@link JobEvent#UPDATE_CODE_STATUS_MESSAGE_CHANGED}
+     * event code of {@link JobEvent#EVENT_CODE_UPDATE} and extra code
+     * {@link JobEvent#EXTRA_CODE_STATUS_MESSAGE_CHANGED}
      * @param message message to send
      */
     protected void notifyStatusMessageUpdate(String message) {
-        JobEvent event = new JobEvent(JobEvent.UPDATE_CODE_STATUS_MESSAGE_CHANGED, getStatus());
+        JobEvent event = new JobEvent(
+                JobEvent.EVENT_CODE_UPDATE,
+                JobEvent.EXTRA_CODE_STATUS_MESSAGE_CHANGED,
+                getStatus());
         event.setExtraMessage(message);
         notifyJobEvent(event);
     }
@@ -519,6 +524,10 @@ public abstract class BaseJob extends JobObservable {
     }
 
     private void addTagImpl(String tag) {
+        if (tag == null) {
+            throw new IllegalArgumentException("tag == null");
+        }
+
         if (mTags == null) {
             mTags = new ArrayList<String>(1);
         }

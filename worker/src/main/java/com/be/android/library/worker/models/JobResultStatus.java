@@ -8,10 +8,10 @@ public enum JobResultStatus {
     public static int getResultCode(JobResultStatus status) {
         switch (status) {
             case OK:
-                return JobEvent.RESULT_CODE_OK;
+                return JobEvent.EVENT_CODE_OK;
 
             case FAILED:
-                return JobEvent.RESULT_CODE_FAILED;
+                return JobEvent.EVENT_CODE_FAILED;
 
             default:
                 throw new RuntimeException(String.format(

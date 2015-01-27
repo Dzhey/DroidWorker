@@ -26,7 +26,7 @@ public class JobFutureResult implements Future<JobEvent> {
                 @Override
                 public void onJobEvent(JobEvent event) {
                     if (mJobId == JobManager.JOB_ID_UNSPECIFIED
-                            && event.getEventCode() == JobEvent.UPDATE_CODE_STATUS_CHANGED) {
+                            && event.getEventCode() == JobEvent.EXTRA_CODE_STATUS_CHANGED) {
 
                         mJobId = event.getJobId();
 

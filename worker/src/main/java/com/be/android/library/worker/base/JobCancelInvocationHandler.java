@@ -1,8 +1,6 @@
 package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.annotations.OnJobCancelled;
-import com.be.android.library.worker.annotations.OnJobFailure;
-import com.be.android.library.worker.annotations.OnJobSuccess;
 
 import java.lang.reflect.Method;
 
@@ -27,7 +25,7 @@ public class JobCancelInvocationHandler extends BaseInvocationHandler {
 
         mPendingStatus = new JobStatus[] { JobStatus.CANCELLED };
         mPendingJobType = annotation.jobType();
-        mPendingEventCode = new int[] { JobEvent.RESULT_CODE_CANCELLED };
+        mPendingEventCode = new int[] { JobEvent.EVENT_CODE_CANCELLED};
         mPendingTags = annotation.jobTags();
     }
 

@@ -145,6 +145,7 @@ public abstract class ForkJoinJob extends BaseJob {
     private ForkJoiner forkJobImpl(ForkJoinJob forkJob) {
         int forkJobGroupId;
 
+        // Execute default-group job in the same job group
         if (forkJob.getGroupId() == JobManager.JOB_GROUP_DEFAULT) {
             forkJobGroupId = getGroupId();
             forkJob.setGroupId(forkJobGroupId);
@@ -218,8 +219,8 @@ public abstract class ForkJoinJob extends BaseJob {
     protected boolean onForwardJobEvent(JobEvent event) {
         // Avoid forwarding base updates
         final int eventCode = event.getEventCode();
-        if (eventCode == JobEvent.UPDATE_CODE_STATUS_CHANGED ||
-                eventCode == JobEvent.UPDATE_CODE_PROGRESS_UPDATE) {
+        if (eventCode == JobEvent.EXTRA_CODE_STATUS_CHANGED ||
+                eventCode == JobEvent.EXTRA_CODE_PROGRESS_UPDATE) {
 
             return false;
         }
