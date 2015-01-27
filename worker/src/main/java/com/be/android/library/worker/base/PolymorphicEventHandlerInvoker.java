@@ -26,7 +26,7 @@ public class PolymorphicEventHandlerInvoker implements EventHandlerInvoker {
             return true;
         }
 
-        return event.getClass().isAssignableFrom(JobEvent.class);
+        return mMethodParamTypes[0].isAssignableFrom(event.getClass());
     }
 
     @Override
