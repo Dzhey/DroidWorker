@@ -10,6 +10,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface OnJobCancelled {
+    public Class<? extends Job> value() default Job.class;
     public Class<? extends Job> jobType() default Job.class;
     public String[] jobTags() default {};
 }

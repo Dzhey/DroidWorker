@@ -11,6 +11,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface OnJobEvent {
+    public Class<? extends Job> value() default Job.class;
     public Class<? extends Job> jobType() default Job.class;
     public String[] jobTags() default {};
     public JobStatus[] jobStatus() default {};

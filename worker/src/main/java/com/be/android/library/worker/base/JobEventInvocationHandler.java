@@ -1,6 +1,7 @@
 package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.annotations.OnJobEvent;
+import com.be.android.library.worker.interfaces.Job;
 
 import java.lang.reflect.Method;
 
@@ -23,7 +24,24 @@ public class JobEventInvocationHandler extends BaseInvocationHandler {
                     ANNOTATION_TYPE.getName(), method.getName()));
         }
 
-        mPendingJobType = annotation.jobType();
+        if (annotation.jobType().equals(Job.class) == false
+                && annotation.value().equals(Job.class) == false) {
+
+            throw new RuntimeException(String.format(
+                    "Inconsistent value:'%s' and jobType:'%s' on annotation:'%s' " +
+                            "with method:'%s'; please consider to use one of two variants",
+                    annotation.value(),
+                    annotation.jobType(),
+                    ANNOTATION_TYPE.getName(),
+                    method.getName()
+            ));
+        }
+
+        if (annotation.value().equals(Job.class) == false) {
+            mPendingJobType = annotation.value();
+        } else {
+            mPendingJobType = annotation.jobType();
+        }
         mPendingStatus = annotation.jobStatus();
         mPendingEventCode = annotation.eventCode();
         mPendingTags = annotation.jobTags();

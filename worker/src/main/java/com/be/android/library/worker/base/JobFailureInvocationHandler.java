@@ -2,6 +2,7 @@ package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.annotations.OnJobFailure;
 import com.be.android.library.worker.annotations.OnJobSuccess;
+import com.be.android.library.worker.interfaces.Job;
 
 import java.lang.reflect.Method;
 
@@ -24,8 +25,25 @@ public class JobFailureInvocationHandler extends BaseInvocationHandler {
                     ANNOTATION_TYPE.getName(), method.getName()));
         }
 
+        if (annotation.jobType().equals(Job.class) == false
+                && annotation.value().equals(Job.class) == false) {
+
+            throw new RuntimeException(String.format(
+                    "Inconsistent value:'%s' and jobType:'%s' on annotation:'%s' " +
+                            "with method:'%s'; please consider to use one of two variants",
+                    annotation.value(),
+                    annotation.jobType(),
+                    ANNOTATION_TYPE.getName(),
+                    method.getName()
+            ));
+        }
+
+        if (annotation.value().equals(Job.class) == false) {
+            mPendingJobType = annotation.value();
+        } else {
+            mPendingJobType = annotation.jobType();
+        }
         mPendingStatus = new JobStatus[] { JobStatus.FAILED };
-        mPendingJobType = annotation.jobType();
         mPendingEventCode = annotation.eventCode();
         mPendingTags = annotation.jobTags();
     }
