@@ -7,7 +7,7 @@ import com.be.android.library.worker.base.JobStatus;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.interfaces.JobEventObservable;
-import com.be.android.library.worker.models.JobFutureResult;
+import com.be.android.library.worker.util.JobFutureResult;
 
 import java.util.Collection;
 import java.util.Iterator;

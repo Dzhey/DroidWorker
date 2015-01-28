@@ -8,9 +8,9 @@ import com.be.android.library.worker.models.LoadJobResult;
 public abstract class LoadJob extends ForkJoinJob {
 
     @Override
-    protected final JobEvent executeImpl() {
+    protected final JobEvent executeImpl() throws Exception {
         return performLoad();
     }
 
-    protected abstract LoadJobResult<?> performLoad();
+    protected abstract LoadJobResult<?> performLoad() throws Exception;
 }

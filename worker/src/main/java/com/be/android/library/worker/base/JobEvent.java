@@ -295,9 +295,9 @@ public class JobEvent {
     public static final int EVENT_CODE_UPDATE = 3;
 
     public static final int EXTRA_CODE_UNSPECIFIED = -1;
-    public static final int EXTRA_CODE_STATUS_CHANGED = 0;
-    public static final int EXTRA_CODE_PROGRESS_UPDATE = 1;
-    public static final int EXTRA_CODE_STATUS_MESSAGE_CHANGED = 2;
+    public static final int EXTRA_CODE_STATUS_CHANGED = 1;
+    public static final int EXTRA_CODE_PROGRESS_UPDATE = 2;
+    public static final int EXTRA_CODE_STATUS_MESSAGE_CHANGED = 3;
 
     private int mJobId = JobManager.JOB_ID_UNSPECIFIED;
     private int mJobGroupId = JobManager.JOB_GROUP_DEFAULT;
@@ -539,7 +539,7 @@ public class JobEvent {
         return getClass().getSimpleName() +
                 "{" +
                 "mEventCode=" + mEventCode +
-                "mExtraCode=" + mExtraCode +
+                ", mExtraCode=" + mExtraCode +
                 ", mJobId=" + mJobId +
                 ", mJobGroupId=" + mJobGroupId +
                 ", mJobStatus=" + mJobStatus +

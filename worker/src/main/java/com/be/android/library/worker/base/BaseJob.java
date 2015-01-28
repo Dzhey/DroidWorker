@@ -6,7 +6,7 @@ import com.be.android.library.worker.controllers.JobEventObservableImpl;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.JobEventObservable;
-import com.be.android.library.worker.models.JobFutureResult;
+import com.be.android.library.worker.util.JobFutureResult;
 
 import java.util.ArrayList;
 import java.util.Arrays;

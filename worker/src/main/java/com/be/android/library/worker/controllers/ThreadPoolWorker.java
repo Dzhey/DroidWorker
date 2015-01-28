@@ -615,6 +615,8 @@ public class ThreadPoolWorker implements Worker {
             } else {
                 int index = mAllocatedExecutors.indexOfKey(groupId);
 
+                job.setStatus(JobStatus.SUBMITTED);
+
                 if (index > -1) {
                     logTrace("+ executing job on allocated executor", job);
                     ExecutorProvider provider = mAllocatedExecutors.get(groupId);

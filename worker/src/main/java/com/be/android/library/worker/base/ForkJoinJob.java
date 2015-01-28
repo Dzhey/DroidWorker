@@ -8,12 +8,15 @@ import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.models.JobFutureResultStub;
 import com.be.android.library.worker.models.JobId;
+import com.be.android.library.worker.util.JobEventFilter;
+import com.be.android.library.worker.util.JobFutureEvent;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -120,7 +123,7 @@ public abstract class ForkJoinJob extends BaseJob {
      * @param job job to submit or execute
      * @return pending job result
      */
-    protected ForkJoiner forkJob(int jobGroupId, ForkJoinJob job) {
+    protected ForkJoiner forkJob(int jobGroupId, ForkJoinJob job) throws JobExecutionException {
         return buildFork(job)
                 .setForwardEvents(shouldForwardForkEventsByDefault())
                 .groupOn(jobGroupId)
@@ -136,13 +139,13 @@ public abstract class ForkJoinJob extends BaseJob {
      * @param forkJob job to submit or execute
      * @return pending job result
      */
-    protected ForkJoiner forkJob(ForkJoinJob forkJob) {
+    protected ForkJoiner forkJob(ForkJoinJob forkJob) throws JobExecutionException {
         return buildFork(forkJob)
                 .setForwardEvents(shouldForwardForkEventsByDefault())
                 .fork();
     }
 
-    private ForkJoiner forkJobImpl(ForkJoinJob forkJob) {
+    private ForkJoiner forkJobImpl(final ForkJoinJob forkJob) throws JobExecutionException {
         int forkJobGroupId;
 
         // Execute default-group job in the same job group
@@ -200,10 +203,43 @@ public abstract class ForkJoinJob extends BaseJob {
                 pendingResult = new JobFutureResultStub(forkJob.execute());
 
             } else {
-                pendingResult = JobManager.getInstance().submitJobForResult(forkJob);
-            }
+                final JobFutureEvent futureEvent = new JobFutureEvent(forkJob,
+                        new JobEventFilter.Builder()
+                                .pendingEventCode(JobEvent.EVENT_CODE_UPDATE)
+                                .pendingExtraCode(JobEvent.EXTRA_CODE_STATUS_CHANGED)
+                                .pendingStatus(JobStatus.ENQUEUED, JobStatus.SUBMITTED)
+                                .build());
 
-            mPendingResults.append(forkJob.getJobId(), pendingResult);
+                pendingResult = JobManager.getInstance().submitJobForResult(forkJob);
+                mPendingResults.append(forkJob.getJobId(), pendingResult);
+
+                try {
+                    futureEvent.get();
+                } catch (InterruptedException e) {
+                    throw new JobExecutionException(e);
+
+                } catch (ExecutionException e) {
+                    throw new JobExecutionException(e);
+                }
+
+                if (forkJobGroupId == JobManager.JOB_GROUP_UNIQUE
+                        && (forkJob.getStatus() == JobStatus.PENDING
+                            || forkJob.getStatus() == JobStatus.ENQUEUED)) {
+
+                    forkJob.cancel();
+                    JobManager.getInstance().discardJob(forkJob.getJobId());
+
+                    // Job is not being executed but remain in the same group
+                    throw new JobExecutionException(String.format(
+                            "Unable to execute unique-grouped job fork '%s'. " +
+                                    "It may be the consequence of insufficient thread pool " +
+                                    "size whilst all the pool threads are busy and unable to " +
+                                    "execute another fork immediately instead of queuing it. " +
+                                    "This way fork job may never be executed. " +
+                                    "You may increase thread pool size, use another defined job group " +
+                                    "or execute fork in the same worker thread", forkJob));
+                }
+            }
 
             return new ForkJoinerImpl(forkJob, pendingResult);
 
@@ -324,7 +360,7 @@ public abstract class ForkJoinJob extends BaseJob {
             return this;
         }
 
-        public ForkJoiner fork() {
+        public ForkJoiner fork() throws JobExecutionException {
             return ForkJoinJob.this.forkJobImpl(job);
         }
     }

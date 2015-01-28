@@ -1,4 +1,4 @@
-package com.be.android.library.worker.models;
+package com.be.android.library.worker.util;
 
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobStatus;
