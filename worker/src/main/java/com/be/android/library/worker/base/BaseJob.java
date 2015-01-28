@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
@@ -23,9 +25,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public abstract class BaseJob extends JobObservable {
 
     protected interface ExecutionHandler {
-        public void onPreExecute();
+        public void onPreExecute() throws Exception;
         public JobEvent execute();
-        public void onPostExecute(JobEvent executionResult);
+        public void onPostExecute(JobEvent executionResult) throws Exception;
         public void onExceptionCaughtBase(Exception e);
         public JobEvent executeImpl() throws Exception;
     }
@@ -41,10 +43,11 @@ public abstract class BaseJob extends JobObservable {
     private ReadWriteLock mTagsLock;
     private boolean mIsCancelled;
     private volatile boolean mIsFinished;
-    private Boolean mIsPaused;
+    private Set<Object> mPauseTokens;
     private CountDownLatch mPauseLatch;
     private Lock mPauseLock;
     private ExecutionHandler mExecutionHandler;
+    private int mExecutionFlags;
 
     protected BaseJob() {
         this(new JobEventObservableImpl());
@@ -70,7 +73,7 @@ public abstract class BaseJob extends JobObservable {
 
         mExecutionHandler = new ExecutionHandler() {
             @Override
-            public void onPreExecute() {
+            public void onPreExecute() throws Exception {
                 BaseJob.this.onPreExecute();
             }
 
@@ -80,7 +83,7 @@ public abstract class BaseJob extends JobObservable {
             }
 
             @Override
-            public void onPostExecute(JobEvent executionResult) {
+            public void onPostExecute(JobEvent executionResult) throws Exception {
                 BaseJob.this.onPostExecute(executionResult);
             }
 
@@ -116,6 +119,14 @@ public abstract class BaseJob extends JobObservable {
         }
 
         mId = jobId;
+    }
+
+    public int getExecutionFlags() {
+        return mExecutionFlags;
+    }
+
+    public void setExecutionFlags(int flags) {
+        mExecutionFlags = flags;
     }
 
     @Override
@@ -154,21 +165,25 @@ public abstract class BaseJob extends JobObservable {
     }
 
     @Override
-    public void setPaused(boolean isPaused) {
+    public void setPaused(Object pauseToken, boolean isPaused) {
         mPauseLock.lock();
 
         try {
-            if (mIsPaused != null) {
-                if (mIsPaused == isPaused) {
-                    return;
-                }
+            if (mPauseTokens == null) {
+                mPauseTokens = new HashSet<Object>(1);
+            }
 
+            if (isPaused) {
+                mPauseTokens.add(pauseToken);
+            } else {
+                mPauseTokens.remove(pauseToken);
+            }
+
+            if (!isPausedImpl()) {
                 if (mPauseLatch != null && mPauseLatch.getCount() > 0) {
                     mPauseLatch.countDown();
                 }
             }
-
-            mIsPaused = isPaused;
 
         } finally {
             mPauseLock.unlock();
@@ -180,11 +195,15 @@ public abstract class BaseJob extends JobObservable {
         mPauseLock.lock();
 
         try {
-            return mIsPaused == null ? false : mIsPaused;
+            return isPausedImpl();
 
         } finally {
             mPauseLock.unlock();
         }
+    }
+
+    private boolean isPausedImpl() {
+        return mPauseTokens != null && !mPauseTokens.isEmpty();
     }
 
     @Override
@@ -371,7 +390,7 @@ public abstract class BaseJob extends JobObservable {
         mPayload = null;
         mTags = null;
         mIsCancelled = false;
-        mIsPaused = null;
+        mPauseTokens = null;
         mPauseLatch = null;
     }
 
@@ -380,28 +399,32 @@ public abstract class BaseJob extends JobObservable {
                 "One should override onReset() in order to reset job; \"%s\"", this));
     }
 
+    private void performPauseIfPaused() throws InterruptedException {
+        boolean isUnlocked = false;
+        try {
+            mPauseLock.lock();
+
+            if (isPausedImpl()) {
+                mPauseLatch = new CountDownLatch(1);
+                mPauseLock.unlock();
+                isUnlocked = true;
+                mPauseLatch.await();
+            }
+
+        } finally {
+            if (!isUnlocked) {
+                mPauseLock.unlock();
+            }
+        }
+    }
+
     @Override
     public JobEvent execute() {
         setStatus(JobStatus.IN_PROGRESS);
 
         JobEvent jobEvent;
         try {
-            boolean isUnlocked = false;
-            try {
-                mPauseLock.lock();
-
-                if (mIsPaused != null && mIsPaused) {
-                    mPauseLatch = new CountDownLatch(1);
-                    mPauseLock.unlock();
-                    isUnlocked = true;
-                    mPauseLatch.await();
-                }
-
-            } finally {
-                if (!isUnlocked) {
-                    mPauseLock.unlock();
-                }
-            }
+            performPauseIfPaused();
 
             mExecutionHandler.onPreExecute();
 
@@ -520,7 +543,8 @@ public abstract class BaseJob extends JobObservable {
     protected void onCancelled() {
     }
 
-    protected void onPreExecute() {
+    protected void onPreExecute() throws Exception {
+        performPauseIfPaused();
     }
 
     private void addTagImpl(String tag) {
@@ -553,7 +577,8 @@ public abstract class BaseJob extends JobObservable {
     protected void onExceptionCaught(Exception e) {
     }
 
-    protected void onPostExecute(JobEvent executionResult) {
+    protected void onPostExecute(JobEvent executionResult) throws Exception {
+        performPauseIfPaused();
     }
 
     protected abstract JobEvent executeImpl() throws Exception;
@@ -598,7 +623,7 @@ public abstract class BaseJob extends JobObservable {
                 ", mIsCancelled=" + mIsCancelled +
                 ", mPayload=" + mPayload +
                 ", mTags=" + mTags +
-                ", mIsPaused=" + mIsPaused +
+                ", isPaused=" + isPaused() +
                 '}';
     }
 }

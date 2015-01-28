@@ -27,7 +27,7 @@ public class ProfilerJob extends BaseJob {
 
     private final ExecutionHandler mExecutionHandler = new ExecutionHandler() {
         @Override
-        public void onPreExecute() {
+        public void onPreExecute() throws Exception {
             ProfilerJob.this.onPreExecute();
         }
 
@@ -37,7 +37,7 @@ public class ProfilerJob extends BaseJob {
         }
 
         @Override
-        public void onPostExecute(JobEvent executionResult) {
+        public void onPostExecute(JobEvent executionResult) throws Exception {
             ProfilerJob.this.onPostExecute(executionResult);
         }
 
@@ -134,7 +134,7 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    protected void onPreExecute() {
+    protected void onPreExecute() throws Exception {
         final long startRealtimeMillis = SystemClock.elapsedRealtime();
 
         mPreExecuteStartTimeMillis = System.currentTimeMillis();
@@ -149,7 +149,7 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    protected void onPostExecute(JobEvent executionResult) {
+    protected void onPostExecute(JobEvent executionResult) throws Exception {
         final long startRealtimeMillis = SystemClock.elapsedRealtime();
 
         mPostExecuteStartTimeMillis = System.currentTimeMillis();
@@ -312,8 +312,8 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public void setPaused(boolean isPaused) {
-        mWrappedJob.setPaused(isPaused);
+    public void setPaused(Object pauseToken, boolean isPaused) {
+        mWrappedJob.setPaused(pauseToken, isPaused);
     }
 
     @Override

@@ -38,10 +38,33 @@ public class ThreadPoolWorker implements Worker {
     public static final String LOG_TAG = ThreadPoolWorker.class.getSimpleName();
 
     public static final String BASE_THREAD_NAME = "PoolWorkerThread.";
+    public static final String BASE_EXCLUSIVE_JOB_THREAD_NAME = "ExclusiveJobThread.";
     public static final String BASE_ALLOCATED_THREAD_NAME = "AllocatedWorkerThread.";
     public static final String BASE_DEDICATED_THREAD_NAME = "DedicatedWorkerThread.";
 
     private static final int THREAD_KEEP_ALIVE_TIME_MILLIS = 10000;
+
+    private class ExclusiveJobThreadFactory implements ThreadFactory {
+
+        private int jobId;
+
+        private ExclusiveJobThreadFactory(int jobId) {
+            this.jobId = jobId;
+        }
+
+        @Override
+        public Thread newThread(Runnable runnable) {
+            String threadName = BASE_EXCLUSIVE_JOB_THREAD_NAME +
+                    "[job-id:" +
+                    String.valueOf(jobId) +
+                    "]";
+
+            Thread thread = new Thread(runnable, threadName);
+            logTrace("+ created new exclusive job '%d' thread '%s'", jobId, threadName);
+
+            return thread;
+        }
+    }
 
     private class AllocatedThreadFactory implements ThreadFactory {
 
@@ -97,7 +120,7 @@ public class ThreadPoolWorker implements Worker {
 
             return thread;
         }
-    };
+    }
 
     /**
      * Main job executor
@@ -108,6 +131,11 @@ public class ThreadPoolWorker implements Worker {
      * Executors mapped to specific job group id
      */
     private final SparseArray<ExecutorProvider> mAllocatedExecutors;
+
+    /**
+     * Executors mapped to specific job id
+     */
+    private final SparseArray<ExecutorProvider> mExclusiveJobExecutors;
 
     /**
      * Queued jobs mapped to certain job group id
@@ -211,6 +239,7 @@ public class ThreadPoolWorker implements Worker {
         mPendingJobs = new SparseArray<Job>();
         mUniquePendingJobs = new LinkedList<Job>();
         mAllocatedExecutors = new SparseArray<ExecutorProvider>(1);
+        mExclusiveJobExecutors = new SparseArray<ExecutorProvider>(0);
         mQueuedJobs = new SparseArray<PriorityQueue<Job>>();
         mExecuteLock = new ReentrantLock(false);
         mDispatchLock = new ReentrantLock(false);
@@ -292,6 +321,39 @@ public class ThreadPoolWorker implements Worker {
         }
     }
 
+    private void allocateExclusiveJobExecutor(int jobId) {
+        mExecuteLock.lock();
+        try {
+            if (mExclusiveJobExecutors.indexOfKey(jobId) > -1) {
+                throw new IllegalArgumentException(String.format(
+                        "exclusive executor is already allocated to job id:'%d'", jobId));
+            }
+
+            mExclusiveJobExecutors.put(jobId, new ExecutorProvider(
+                    new ExclusiveJobThreadFactory(jobId)));
+            Log.d(LOG_TAG, String.format("exclusive executor allocated for job id:'%d'", jobId));
+
+        } finally {
+            mExecuteLock.unlock();
+        }
+    }
+
+    private void removeExclusiveJobExecutor(int jobId) {
+        mExecuteLock.lock();
+        try {
+            int index = mExclusiveJobExecutors.indexOfKey(jobId);
+            if (index < 0) {
+                return;
+            }
+
+            mExclusiveJobExecutors.remove(jobId);
+            Log.d(LOG_TAG, String.format("exclusive executor removed for job id:'%d'", jobId));
+
+        } finally {
+            mExecuteLock.unlock();
+        }
+    }
+
     /**
      * Request to execute any job with the same job group id
      * in the same single thread in a serial manner.
@@ -315,7 +377,7 @@ public class ThreadPoolWorker implements Worker {
 
         mExecuteLock.lock();
         try {
-            if (mAllocatedExecutors.indexOfKey(jobGroupId) != -1) {
+            if (mAllocatedExecutors.indexOfKey(jobGroupId) > -1) {
                 throw new IllegalArgumentException(String.format(
                         "executor is already allocated to job group '%d'", jobGroupId));
             }
@@ -475,6 +537,12 @@ public class ThreadPoolWorker implements Worker {
                 executor.shutdown();
                 logTrace("+ allocated executor '%d' stopped", i);
             }
+            final int jobExecutorsCount = mExclusiveJobExecutors.size();
+            for (int i = 0; i < jobExecutorsCount; i++) {
+                ExecutorService executor = mExclusiveJobExecutors.valueAt(i).get();
+                executor.shutdown();
+                logTrace("+ exclusive job executor '%d' stopped", i);
+            }
             logTrace("<job executors stopped");
         } finally {
             mExecuteLock.unlock();
@@ -519,8 +587,15 @@ public class ThreadPoolWorker implements Worker {
 
             if (groupId == JobManager.JOB_GROUP_UNIQUE) {
                 if (getPendingJobCount() >= mMaximumThreadCount) {
-                    enqueueJob(job);
-                    logTrace("<job dispatched (all thread are busy)", job);
+                    if ((job.getExecutionFlags() & Job.EXECUTION_FLAG_FORCE_EXECUTE)
+                            == Job.EXECUTION_FLAG_FORCE_EXECUTE) {
+
+                        allocateExclusiveJobExecutor(job.getJobId());
+                        executeJob(job);
+                    } else {
+                        enqueueJob(job);
+                    }
+                    logTrace("<job dispatched (all threads are busy)", job);
                     return;
                 }
             }
@@ -556,6 +631,11 @@ public class ThreadPoolWorker implements Worker {
                 if (job instanceof ProfilerJob) {
                     logTraceForce("Profile job dump:\n%s", job, ((ProfilerJob) job).dumpProfile());
                 }
+            }
+
+            if ((job.getExecutionFlags() & Job.EXECUTION_FLAG_FORCE_EXECUTE)
+                    == Job.EXECUTION_FLAG_FORCE_EXECUTE) {
+                removeExclusiveJobExecutor(job.getJobId());
             }
 
         } else {
@@ -623,8 +703,17 @@ public class ThreadPoolWorker implements Worker {
                     provider.get().submit((Runnable) job);
 
                 } else {
-                    logTrace("+ executing job on common thread pool", job);
-                    mCoreExecutor.submit((Runnable) job);
+                    index = mExclusiveJobExecutors.indexOfKey(job.getJobId());
+
+                    if (index > -1) {
+                        logTrace("+ executing job on exclusive executor", job);
+                        ExecutorProvider provider = mExclusiveJobExecutors.get(job.getJobId());
+                        provider.get().submit((Runnable) job);
+
+                    } else {
+                        logTrace("+ executing job on common thread pool", job);
+                        mCoreExecutor.submit((Runnable) job);
+                    }
                 }
             }
 
@@ -643,6 +732,7 @@ public class ThreadPoolWorker implements Worker {
 
     private void enqueueJob(Job job) {
         logTrace(">enqueue job..", job);
+
         final int groupId = job.getGroupId();
 
         final Lock lock = mQueuedJobsLock.writeLock();

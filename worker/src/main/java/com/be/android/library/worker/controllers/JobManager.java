@@ -41,6 +41,15 @@ public abstract class JobManager implements JobEventObservable {
         }
     };
 
+    public static boolean isDefaultJobGroup(int groupId) {
+        return JOB_GROUP_DEFAULT == groupId;
+    }
+
+    public static boolean isSpecialJobGroup(int groupId) {
+        return groupId == JOB_GROUP_UNIQUE ||
+                groupId == JOB_GROUP_DEDICATED;
+    }
+
     public static JobManager getInstance() {
         if (instance == null) {
             throw new IllegalStateException("job manager instance is not defined; call init() first");

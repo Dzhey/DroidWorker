@@ -9,6 +9,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 public interface Job extends Callable<JobEvent>, Runnable, JobEventObservable {
+
+    public static final int EXECUTION_FLAG_FORCE_EXECUTE = 0x1;
+
+    int getExecutionFlags();
+
     void setPriority(int priority);
 
     int getPriority();
@@ -59,7 +64,7 @@ public interface Job extends Callable<JobEvent>, Runnable, JobEventObservable {
 
     Future<JobEvent> getFutureResult();
 
-    void setPaused(boolean isPaused);
+    void setPaused(Object pauseToken, boolean isPaused);
 
     boolean isPaused();
 }

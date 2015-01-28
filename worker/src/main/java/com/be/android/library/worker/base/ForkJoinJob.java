@@ -5,6 +5,7 @@ import android.util.SparseArray;
 
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
+import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.models.JobFutureResultStub;
 import com.be.android.library.worker.models.JobId;
@@ -145,101 +146,94 @@ public abstract class ForkJoinJob extends BaseJob {
                 .fork();
     }
 
-    private ForkJoiner forkJobImpl(final ForkJoinJob forkJob) throws JobExecutionException {
-        int forkJobGroupId;
+    public boolean isValidForkGroup(int forkGroupId) {
+        return JobManager.isSpecialJobGroup(forkGroupId)
+                || JobManager.isDefaultJobGroup(forkGroupId)
+                || findParentForGroupId(forkGroupId) == null;
+    }
 
-        // Execute default-group job in the same job group
-        if (forkJob.getGroupId() == JobManager.JOB_GROUP_DEFAULT) {
-            forkJobGroupId = getGroupId();
-            forkJob.setGroupId(forkJobGroupId);
-        } else {
-            forkJobGroupId = forkJob.getGroupId();
-        }
-
+    private ForkJoiner forkJobImpl(ForkBuilder forkBuilder) throws JobExecutionException {
         if (isJobIdAssigned() == false) {
             throw new IllegalStateException(String.format("Cannot fork unbound job '%s'. " +
                     "Please submit job on job manager before trying to fork.", this));
         }
 
+        final ForkJoinJob forkJob = forkBuilder.getJob();
+        final int groupId = getGroupId();
+        final int forkGroupId = forkJob.getGroupId();
+
         final Lock lock = mLock.writeLock();
         lock.lock();
         try {
             final List<JobId> parentsPath = new ArrayList<JobId>(getParentJobsPath());
-
-            if (forkJobGroupId != JobManager.JOB_GROUP_UNIQUE
-                    && forkJobGroupId != JobManager.JOB_GROUP_DEDICATED
-                    && findParentForGroupId(forkJobGroupId) != null) {
-
-                boolean hasTheSameGroup = false;
-                if (parentsPath.isEmpty() == false) {
-                    int parentGroupId = parentsPath.get(parentsPath.size() - 1).getJobGroupId();
-                    hasTheSameGroup = parentGroupId == forkJobGroupId;
-                }
-
-                if (!hasTheSameGroup) {
-                    throw new IllegalArgumentException(String.format(
-                            "One or more fork job '%s' parents '%s' have the same group id '%s'; " +
-                                    "this way fork job may not be submitted as it would have " +
-                                    "to execute after it's parent complete execution itself." +
-                                    "Please review your fork job tree.",
-                            this,
-                            parentsPath,
-                            getGroupId()));
-                }
+            if (isValidForkGroup(forkGroupId) == false) {
+                throw new IllegalArgumentException(String.format(
+                        "One or more fork job '%s' parents '%s' share the same group id '%s'; " +
+                                "this way fork job may not be submitted as it would have " +
+                                "to execute after it's parent complete execution itself." +
+                                "Please review your fork job tree.",
+                        forkJob,
+                        parentsPath,
+                        groupId));
             }
-
             parentsPath.add(JobId.of(this));
             forkJob.setParentJobsPath(parentsPath);
 
             Future<JobEvent> pendingResult;
-            if (forkJobGroupId == getGroupId()
-                    && forkJobGroupId != JobManager.JOB_GROUP_UNIQUE
-                    && forkJobGroupId != JobManager.JOB_GROUP_DEDICATED) {
+            if (JobManager.isSpecialJobGroup(forkGroupId) == false &&
+                    (forkGroupId == groupId || JobManager.isDefaultJobGroup(forkGroupId))) {
 
-                // Execute job with the same group id immediately
+                // Execute job with the same or default group id immediately
                 if (forkJob.isJobIdAssigned() == false) {
                     forkJob.setJobId(generateJobId());
                 }
                 pendingResult = new JobFutureResultStub(forkJob.execute());
 
             } else {
+                final Object forkPauseToken = new Object();
                 final JobFutureEvent futureEvent = new JobFutureEvent(forkJob,
                         new JobEventFilter.Builder()
                                 .pendingEventCode(JobEvent.EVENT_CODE_UPDATE)
                                 .pendingExtraCode(JobEvent.EXTRA_CODE_STATUS_CHANGED)
                                 .pendingStatus(JobStatus.ENQUEUED, JobStatus.SUBMITTED)
                                 .build());
-
+                forkJob.setPaused(forkPauseToken, true);
+                forkJob.setExecutionFlags(forkJob.getExecutionFlags() | Job.EXECUTION_FLAG_FORCE_EXECUTE);
                 pendingResult = JobManager.getInstance().submitJobForResult(forkJob);
-                mPendingResults.append(forkJob.getJobId(), pendingResult);
 
                 try {
                     futureEvent.get();
+
+                    // Validate correct unique job execution
+                    if (forkGroupId == JobManager.JOB_GROUP_UNIQUE
+                            && (forkJob.getStatus() == JobStatus.PENDING
+                                || forkJob.getStatus() == JobStatus.ENQUEUED)) {
+
+                        forkJob.cancel();
+                        JobManager.getInstance().discardJob(forkJob.getJobId());
+
+                        throw new JobExecutionException(String.format(
+                                "Unable to execute unique-grouped job fork '%s'. " +
+                                        "It may be the consequence of insufficient thread pool " +
+                                        "size whilst all the pool threads are busy and unable to " +
+                                        "execute another fork immediately instead of queuing it. " +
+                                        "This way fork job may never be executed. " +
+                                        "You may increase thread pool size, use another defined job group " +
+                                        "or execute fork in the same worker thread", forkJob));
+                    }
+
                 } catch (InterruptedException e) {
                     throw new JobExecutionException(e);
 
                 } catch (ExecutionException e) {
                     throw new JobExecutionException(e);
-                }
 
-                if (forkJobGroupId == JobManager.JOB_GROUP_UNIQUE
-                        && (forkJob.getStatus() == JobStatus.PENDING
-                            || forkJob.getStatus() == JobStatus.ENQUEUED)) {
-
-                    forkJob.cancel();
-                    JobManager.getInstance().discardJob(forkJob.getJobId());
-
-                    // Job is not being executed but remain in the same group
-                    throw new JobExecutionException(String.format(
-                            "Unable to execute unique-grouped job fork '%s'. " +
-                                    "It may be the consequence of insufficient thread pool " +
-                                    "size whilst all the pool threads are busy and unable to " +
-                                    "execute another fork immediately instead of queuing it. " +
-                                    "This way fork job may never be executed. " +
-                                    "You may increase thread pool size, use another defined job group " +
-                                    "or execute fork in the same worker thread", forkJob));
+                } finally {
+                    forkJob.setPaused(forkPauseToken, false);
                 }
             }
+
+            mPendingResults.append(forkJob.getJobId(), pendingResult);
 
             return new ForkJoinerImpl(forkJob, pendingResult);
 
@@ -341,6 +335,16 @@ public abstract class ForkJoinJob extends BaseJob {
             return this;
         }
 
+        public ForkBuilder groupOnTheSameGroup() {
+            groupOn(JobManager.JOB_GROUP_DEFAULT);
+
+            return this;
+        }
+
+        ForkJoinJob getJob() {
+            return job;
+        }
+
         public ForkBuilder setForwardEvents(boolean shouldForwardEvents) {
             if (!shouldForwardEvents) {
                 job.removeJobEventListener(mForwardEventListener);
@@ -361,7 +365,7 @@ public abstract class ForkJoinJob extends BaseJob {
         }
 
         public ForkJoiner fork() throws JobExecutionException {
-            return ForkJoinJob.this.forkJobImpl(job);
+            return ForkJoinJob.this.forkJobImpl(this);
         }
     }
 
