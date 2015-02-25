@@ -10,6 +10,15 @@ import java.util.concurrent.Future;
 
 public interface Job extends Callable<JobEvent>, Runnable, JobEventObservable {
 
+    /**
+     * If set then job with group {@link com.be.android.library.worker.controllers.JobManager#JOB_GROUP_UNIQUE}
+     * should not be enqueued when there are no any free threads.
+     * In such case an extra executor should be allocated.
+     * <br />
+     * <br />
+     * Any forked jobs with group {@link com.be.android.library.worker.controllers.JobManager#JOB_GROUP_UNIQUE}
+     * has to have this flag to ensure correct execution flow.
+     */
     public static final int EXECUTION_FLAG_FORCE_EXECUTE = 0x1;
 
     int getExecutionFlags();
@@ -68,4 +77,3 @@ public interface Job extends Callable<JobEvent>, Runnable, JobEventObservable {
 
     boolean isPaused();
 }
-

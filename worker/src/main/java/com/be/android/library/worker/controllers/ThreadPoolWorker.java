@@ -43,24 +43,41 @@ public class ThreadPoolWorker implements Worker {
     public static final String BASE_DEDICATED_THREAD_NAME = "DedicatedWorkerThread.";
 
     private static final int THREAD_KEEP_ALIVE_TIME_MILLIS = 10000;
+    private static final int MAX_FREE_EXCLUSIVE_EXECUTORS_DEFAULT = 10;
+    private static final int MAX_FREE_EXCLUSIVE_EXECUTORS_UNLIMITED = -1;
+
+    private final ThreadFactory mCoreThreadFactory = new ThreadFactory() {
+        @Override
+        public Thread newThread(Runnable runnable) {
+            String threadName = BASE_THREAD_NAME +
+                    mPoolThreadCounter.incrementAndGet() +
+                    "(" +
+                    mThreadCounter.incrementAndGet() +
+                    ")";
+
+            Thread thread = new Thread(runnable, threadName);
+
+            logTrace("+ created new pool thread '%s'", threadName);
+
+            return thread;
+        }
+    };
 
     private class ExclusiveJobThreadFactory implements ThreadFactory {
 
-        private int jobId;
-
-        private ExclusiveJobThreadFactory(int jobId) {
-            this.jobId = jobId;
+        private ExclusiveJobThreadFactory() {
         }
 
         @Override
         public Thread newThread(Runnable runnable) {
             String threadName = BASE_EXCLUSIVE_JOB_THREAD_NAME +
-                    "[job-id:" +
-                    String.valueOf(jobId) +
-                    "]";
+                    mExclusiveThreadCounter.incrementAndGet() +
+                    "(" +
+                    mThreadCounter.incrementAndGet() +
+                    ")";
 
             Thread thread = new Thread(runnable, threadName);
-            logTrace("+ created new exclusive job '%d' thread '%s'", jobId, threadName);
+            logTrace("+ created new exclusive thread '%s'", threadName);
 
             return thread;
         }
@@ -77,15 +94,15 @@ public class ThreadPoolWorker implements Worker {
         @Override
         public Thread newThread(Runnable runnable) {
             String threadName = BASE_ALLOCATED_THREAD_NAME +
-                    mPoolThreadCounter.incrementAndGet() +
-                    "(" +
                     mAllocatedThreadCounter.incrementAndGet() +
+                    "(" +
+                    mThreadCounter.incrementAndGet() +
                     ")[group-id:" +
                     String.valueOf(jobGroupId) +
                     "]";
 
             Thread thread = new Thread(runnable, threadName);
-            logTrace("+ created new allocated thread '%s'", threadName);
+            logTrace("+ created new allocated thread '%s' for job group '%d'", threadName, jobGroupId);
 
             return thread;
         }
@@ -98,7 +115,6 @@ public class ThreadPoolWorker implements Worker {
 
         private DedicatedThreadFactory(int jobId, int jobGroupId) {
             this.jobId = jobId;
-
             this.jobGroupId = jobGroupId;
         }
 
@@ -151,6 +167,7 @@ public class ThreadPoolWorker implements Worker {
      */
     private final SparseArray<Job> mPendingJobs;
     private final LinkedList<Job> mUniquePendingJobs;
+    private final LinkedList<ExecutorProvider> mFreeExecutors;
 
     private final Handler mHandler;
     private final String mJobFinishListenerTag;
@@ -162,11 +179,13 @@ public class ThreadPoolWorker implements Worker {
     private final AtomicInteger mPoolThreadCounter;
     private final AtomicInteger mAllocatedThreadCounter;
     private final AtomicInteger mDedicatedThreadCounter;
+    private final AtomicInteger mExclusiveThreadCounter;
     private boolean mIsTraceEnabled;
     private boolean mIsSelectiveTraceEnabled;
     private final AtomicBoolean mIsStopped;
     private final int mCoreThreadCount;
     private int mMaximumThreadCount;
+    private int mMaxFreeExclusiveExecutorsCount = MAX_FREE_EXCLUSIVE_EXECUTORS_DEFAULT;
 
     /**
      * Job type list defining which job types to trace if selective trace is enabled.
@@ -184,23 +203,6 @@ public class ThreadPoolWorker implements Worker {
                     return rhs.getPriority() - lhs.getPriority();
                 }
             };
-
-    private final ThreadFactory mThreadFactory = new ThreadFactory() {
-        @Override
-        public Thread newThread(Runnable runnable) {
-            String threadName = BASE_THREAD_NAME +
-                    mPoolThreadCounter.incrementAndGet() +
-                    "(" +
-                    mThreadCounter.incrementAndGet() +
-                    ")";
-
-            Thread thread = new Thread(runnable, threadName);
-
-            logTrace("+ created new pool thread '%s'", threadName);
-
-            return thread;
-        }
-    };
 
     private final JobEventListener mJobEventListener = new JobEventListener() {
         @Override
@@ -234,10 +236,12 @@ public class ThreadPoolWorker implements Worker {
         mPoolThreadCounter = new AtomicInteger(0);
         mAllocatedThreadCounter = new AtomicInteger(0);
         mDedicatedThreadCounter = new AtomicInteger(0);
+        mExclusiveThreadCounter = new AtomicInteger(0);
         mQueuedJobsLock = new ReentrantReadWriteLock();
         mPendingJobsLock = new ReentrantReadWriteLock();
         mPendingJobs = new SparseArray<Job>();
         mUniquePendingJobs = new LinkedList<Job>();
+        mFreeExecutors = new LinkedList<ExecutorProvider>();
         mAllocatedExecutors = new SparseArray<ExecutorProvider>(1);
         mExclusiveJobExecutors = new SparseArray<ExecutorProvider>(0);
         mQueuedJobs = new SparseArray<PriorityQueue<Job>>();
@@ -245,10 +249,63 @@ public class ThreadPoolWorker implements Worker {
         mDispatchLock = new ReentrantLock(false);
         mCoreExecutorQueue = new SynchronousQueue<Runnable>(false);
         mCoreExecutor = new ThreadPoolExecutor(mCoreThreadCount, mCoreThreadCount,
-                THREAD_KEEP_ALIVE_TIME_MILLIS, TimeUnit.MILLISECONDS, mCoreExecutorQueue, mThreadFactory);
+                THREAD_KEEP_ALIVE_TIME_MILLIS, TimeUnit.MILLISECONDS, mCoreExecutorQueue, mCoreThreadFactory);
 
         mCoreExecutor.setMaximumPoolSize(mMaximumThreadCount);
         Log.d(LOG_TAG, String.format("thread pool worker created; core pool size: '%d'", threadCount));
+    }
+
+    /**
+     * Get current number of free exclusive executors
+     */
+    public int getFreeExclusiveExecutorsCount() {
+        mExecuteLock.lock();
+        try {
+            return mFreeExecutors.size();
+
+        } finally {
+            mExecuteLock.unlock();
+        }
+    }
+
+    /**
+     * Set maximum number of free exclusive executors to keep
+     * @param count
+     */
+    public void setMaxFreeExclusiveExecutorsCount(int count) {
+        if (count < 0 && count != MAX_FREE_EXCLUSIVE_EXECUTORS_UNLIMITED) {
+            throw new IllegalArgumentException("invalid count");
+        }
+
+        if (mMaxFreeExclusiveExecutorsCount == count) {
+            return;
+        }
+
+        mMaxFreeExclusiveExecutorsCount = count;
+
+        if (count == MAX_FREE_EXCLUSIVE_EXECUTORS_UNLIMITED) {
+            return;
+        }
+
+        mExecuteLock.lock();
+        try {
+            while (mFreeExecutors.size() > count) {
+                mFreeExecutors.poll().get().shutdown();
+
+                logTrace("truncated free executors count to %d", mFreeExecutors.size());
+            }
+
+        } finally {
+            mExecuteLock.unlock();
+        }
+    }
+
+    /**
+     * Get maximum number of free exclusive executors to keep
+     * @return
+     */
+    public int getMaxFreeExclusiveExecutorsCount() {
+        return mMaxFreeExclusiveExecutorsCount;
     }
 
     public void setTraceEnabled(boolean isTraceEnabled) {
@@ -329,9 +386,17 @@ public class ThreadPoolWorker implements Worker {
                         "exclusive executor is already allocated to job id:'%d'", jobId));
             }
 
-            mExclusiveJobExecutors.put(jobId, new ExecutorProvider(
-                    new ExclusiveJobThreadFactory(jobId)));
-            Log.d(LOG_TAG, String.format("exclusive executor allocated for job id:'%d'", jobId));
+            ExecutorProvider provider;
+            if (!mFreeExecutors.isEmpty()) {
+                provider = mFreeExecutors.poll();
+                logTrace("exclusive executor reused for job id:'%d'", jobId);
+                logTrace("free executors count: %d", mFreeExecutors.size());
+            } else {
+                provider = new ExecutorProvider(new ExclusiveJobThreadFactory());
+                Log.d(LOG_TAG, String.format("exclusive executor allocated for job id:'%d'", jobId));
+            }
+
+            mExclusiveJobExecutors.put(jobId, provider);
 
         } finally {
             mExecuteLock.unlock();
@@ -346,8 +411,18 @@ public class ThreadPoolWorker implements Worker {
                 return;
             }
 
+            ExecutorProvider provider = mExclusiveJobExecutors.valueAt(index);
             mExclusiveJobExecutors.remove(jobId);
-            Log.d(LOG_TAG, String.format("exclusive executor removed for job id:'%d'", jobId));
+
+            if (mMaxFreeExclusiveExecutorsCount == MAX_FREE_EXCLUSIVE_EXECUTORS_UNLIMITED
+                    || mFreeExecutors.size() < mMaxFreeExclusiveExecutorsCount) {
+
+                mFreeExecutors.add(provider);
+                logTrace("keep exclusive executor to reuse (job id:'%d')", jobId);
+                logTrace("free exclusive executors count: %d", mFreeExecutors.size());
+            } else {
+                Log.d(LOG_TAG, String.format("exclusive executor removed for job id:'%d'", jobId));
+            }
 
         } finally {
             mExecuteLock.unlock();
