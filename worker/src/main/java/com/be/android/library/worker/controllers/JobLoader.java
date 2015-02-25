@@ -2,6 +2,7 @@ package com.be.android.library.worker.controllers;
 
 import com.be.android.library.worker.handlers.JobEventHandlerInterface;
 import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.util.JobSelector;
 
 import java.lang.ref.WeakReference;
 
@@ -39,7 +40,7 @@ public class JobLoader {
             return JobManager.JOB_ID_UNSPECIFIED;
         }
 
-        Job job = JobManager.getInstance().findJob(mAttachTag);
+        Job job = JobManager.getInstance().findJob(JobSelector.forJobTags(mAttachTag));
 
         if (job != null && job.isFinished() == false) {
             if (eventHandler.addPendingJob(job.getJobId())) {

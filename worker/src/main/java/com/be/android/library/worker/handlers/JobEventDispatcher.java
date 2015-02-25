@@ -17,6 +17,7 @@ import com.be.android.library.worker.base.JobSuccessInvocationHandlerProvider;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.util.JobSelector;
 
 import java.lang.ref.WeakReference;
 import java.util.Collection;
@@ -42,7 +43,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     private final CachedJobEventListener mJobFinishedListener = new CachedJobEventListener() {
 
         @Override
-        public void onJobEventImpl(final JobEvent event) {
+        public boolean onJobEventImpl(final JobEvent event) {
             if (mPendingJobs.contains(event.getJobId())) {
                 mHandler.post(new Runnable() {
                     @Override
@@ -50,7 +51,11 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
                         handleJobEvent(event);
                     }
                 });
+
+                return false;
             }
+
+            return true;
         }
     };
 
@@ -116,20 +121,24 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         return mPendingJobs.contains(jobId);
     }
 
-    public boolean isPending(String... jobTags) {
-        Job job = JobManager.getInstance().findJob(jobTags);
+    public boolean isPending(JobSelector selector) {
+        Job job = JobManager.getInstance().findJob(selector);
 
         if (job == null) return false;
 
         return mPendingJobs.contains(job.getJobId());
     }
 
-    public boolean isPending(Collection<String> jobTags) {
-        Job job = JobManager.getInstance().findJob(jobTags);
+    public boolean isPendingAll(JobSelector selector) {
+        List<Job> jobs = JobManager.getInstance().findAll(selector);
 
-        if (job == null) return false;
+        for (Job job : jobs) {
+            if (mPendingJobs.contains(job.getJobId()) == false) {
+                return false;
+            }
+        }
 
-        return mPendingJobs.contains(job.getJobId());
+        return true;
     }
 
     public void saveState(Bundle outState) {
@@ -244,7 +253,8 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
                     JobManager.getInstance().removeJobEventListener(mJobFinishedListener);
                 }
             }
-            mJobFinishedListener.consumeEvent(jobId);
+
+            mJobFinishedListener.consumeEvent(jobEvent);
         }
     }
 

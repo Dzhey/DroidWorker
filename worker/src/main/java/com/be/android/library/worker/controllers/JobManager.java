@@ -8,9 +8,12 @@ import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.interfaces.JobEventObservable;
 import com.be.android.library.worker.util.JobFutureResult;
+import com.be.android.library.worker.util.JobSelector;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -108,11 +111,9 @@ public abstract class JobManager implements JobEventObservable {
         return null;
     }
 
-    public Job findJob(String... jobTags) {
-        if (jobTags.length == 0) return null;
-
+    public Job findJob(JobSelector selector) {
         for (Job job : mJobs) {
-            if (job.hasTags(jobTags)) {
+            if (selector.apply(job)) {
                 return job;
             }
         }
@@ -120,35 +121,33 @@ public abstract class JobManager implements JobEventObservable {
         return null;
     }
 
-    public Job findJob(Collection<String> jobTags) {
-        if (jobTags.isEmpty()) return null;
-
+    public List<Job> findAll(JobSelector selector) {
+        List<Job> result = new ArrayList<Job>();
         for (Job job : mJobs) {
-            if (job.hasTags(jobTags)) {
-                return job;
+            if (selector.apply(job)) {
+                result.add(job);
             }
         }
 
-        return null;
-    }
-
-    private void handleJobEvent(JobEvent event) {
-        Job job = findJob(event.getJobId());
-
-        if (event.isJobFinished()) {
-            if (job != null) {
-                job.removeJobEventListener(mJobEventListener);
-            }
-            discardJob(event.getJobId());
-        }
-
-        notifyJobEvent(event);
+        return result;
     }
 
     public boolean isJobCancelled(int jobId) {
         Job job = findJob(jobId);
 
         return job != null && job.isCancelled();
+    }
+
+    public boolean isAllCancelled(JobSelector selector) {
+        for (Job job : mJobs) {
+            if (selector.apply(job)) {
+                if (job.isCancelled() == false) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     public boolean cancelJob(int jobId) {
@@ -160,6 +159,22 @@ public abstract class JobManager implements JobEventObservable {
         }
 
         return false;
+    }
+
+    public int cancelAll(JobSelector selector) {
+        int count = 0;
+
+        for (Job job : mJobs) {
+            if (selector.apply(job)) {
+                if (job != null && job.isCancelled() == false) {
+                    job.cancel();
+
+                    count++;
+                }
+            }
+        }
+
+        return count;
     }
 
     public boolean discardJob(int jobId) {
@@ -176,6 +191,22 @@ public abstract class JobManager implements JobEventObservable {
         return false;
     }
 
+    public int discardAll(JobSelector selector) {
+        int count = 0;
+
+        Iterator<Job> iter = mJobs.iterator();
+        while (iter.hasNext()) {
+            Job next = iter.next();
+
+            if (selector.apply(next)) {
+                iter.remove();
+                count++;
+            }
+        }
+
+        return count;
+    }
+
     private void checkJobPreconditions(Job job) {
         if (job == null) {
             throw new IllegalArgumentException("job is null");
@@ -184,6 +215,19 @@ public abstract class JobManager implements JobEventObservable {
             throw new IllegalArgumentException(
                     "job is already submitted or it's status manually changed");
         }
+    }
+
+    private void handleJobEvent(JobEvent event) {
+        Job job = findJob(event.getJobId());
+
+        if (event.isJobFinished()) {
+            if (job != null) {
+                job.removeJobEventListener(mJobEventListener);
+            }
+            discardJob(event.getJobId());
+        }
+
+        notifyJobEvent(event);
     }
 
     @Override

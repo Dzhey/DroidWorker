@@ -1,48 +1,95 @@
 package com.be.android.library.worker.handlers;
 
+import android.annotation.TargetApi;
+import android.os.Build;
 import android.util.Log;
 import android.util.SparseArray;
 
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.base.JobEvent;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+
+/**
+ * Job event listener used to retain job events for short period of time
+ */
 public abstract class CachedJobEventListener implements JobEventListener {
 
     private static final String LOG_TAG = CachedJobEventListener.class.getSimpleName();
-    private static final int WARNING_SIZE_THRESHOLD = 50;
 
-    /**
-     * Each job event mapped to job id
-     */
-    private final SparseArray<JobEvent> mLastJobEvents;
+    private static final int MAX_SIZE_THRESHOLD = 10;
+
+    private final LinkedList<JobEvent> mLastJobEvents;
 
     public CachedJobEventListener() {
-        mLastJobEvents = new SparseArray<JobEvent>(1);
+        mLastJobEvents = new LinkedList<JobEvent>();
     }
 
     @Override
     public final void onJobEvent(JobEvent event) {
-        mLastJobEvents.put(event.getJobId(), event);
-
-        if (mLastJobEvents.size() > WARNING_SIZE_THRESHOLD) {
-            Log.e(LOG_TAG, String.format("'%s' is overloaded " +
-                    "of job events; make sure to call consumeEvent()", getClass().getSimpleName()));
+        if (mLastJobEvents.size() >= MAX_SIZE_THRESHOLD) {
+            mLastJobEvents.removeFirst();
         }
 
-        onJobEventImpl(event);
+        if (!onJobEventImpl(event)) {
+            mLastJobEvents.addLast(event);
+        }
     }
 
     public JobEvent getLastJobEvent(int jobId) {
-        return mLastJobEvents.get(jobId);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+            return getLastJobEventApi9(jobId);
+        }
+
+        // API 8
+        final int sz = mLastJobEvents.size();
+        for (int i = sz - 1; i >= 0; i--) {
+            JobEvent event = mLastJobEvents.get(i);
+
+            if (event.getJobId() == jobId) {
+                return event;
+            }
+        }
+
+        return null;
     }
 
+    @TargetApi(Build.VERSION_CODES.GINGERBREAD)
+    private JobEvent getLastJobEventApi9(int jobId) {
+        final Iterator<JobEvent> iter = mLastJobEvents.descendingIterator();
+
+        while (iter.hasNext()) {
+            JobEvent event = iter.next();
+            if (event.getJobId() == jobId) {
+                return event;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Remove all events from cache
+     */
     public void clearCachedEvents() {
         mLastJobEvents.clear();
     }
 
-    public void consumeEvent(int jobId) {
-        mLastJobEvents.remove(jobId);
+    /**
+     * Remove event from cache
+     *
+     * @param event
+     */
+    public void consumeEvent(JobEvent event) {
+        mLastJobEvents.remove(event);
     }
 
-    public abstract void onJobEventImpl(JobEvent event);
+    /**
+     * Implementation of handler
+     *
+     * @param event
+     * @return true if the event should be removed from cache
+     */
+    public abstract boolean onJobEventImpl(JobEvent event);
 }

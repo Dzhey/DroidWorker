@@ -31,12 +31,20 @@ public class JobEventObservableImpl implements JobEventObservable {
 
     @Override
     public void removeJobEventListeners() {
-        mEventListenersLock = null;
-        mIsNotifyingEventListeners = null;
-
         synchronized (this) {
-            if (mEventListeners != null) {
-                mEventListeners.clear();
+            Lock lock = null;
+            try {
+                if (mEventListenersLock != null) {
+                    lock = mEventListenersLock.writeLock();
+                    lock.lock();
+                }
+                if (mEventListeners != null) {
+                    mEventListeners.clear();
+                }
+            } finally {
+                if (lock != null) {
+                    lock.unlock();
+                }
             }
         }
     }
