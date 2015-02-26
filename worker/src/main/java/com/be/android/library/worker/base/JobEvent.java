@@ -407,7 +407,6 @@ public class JobEvent {
     }
 
     protected void copyFrom(JobEvent other) {
-        mJobId = other.mJobId;
         mJobGroupId = other.mJobGroupId;
         mEventCode = other.mEventCode;
         mExtraCode = other.mExtraCode;
