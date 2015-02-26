@@ -42,7 +42,7 @@ public class JobLoader {
 
         Job job = JobManager.getInstance().findJob(JobSelector.forJobTags(mAttachTag));
 
-        if (job != null && job.isFinished() == false) {
+        if (job != null && job.isFinished() == false && job.isCancelled() == false) {
             if (eventHandler.addPendingJob(job.getJobId())) {
                 return job.getJobId();
             }
