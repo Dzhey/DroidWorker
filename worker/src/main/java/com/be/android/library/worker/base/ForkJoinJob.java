@@ -147,7 +147,8 @@ public abstract class ForkJoinJob extends BaseJob {
     }
 
     public boolean isValidForkGroup(int forkGroupId) {
-        return JobManager.isSpecialJobGroup(forkGroupId)
+        return forkGroupId == getGroupId()
+                || JobManager.isSpecialJobGroup(forkGroupId)
                 || JobManager.isDefaultJobGroup(forkGroupId)
                 || findParentForGroupId(forkGroupId) == null;
     }
