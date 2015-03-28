@@ -5,7 +5,9 @@ import android.util.Log;
 import com.be.android.library.worker.controllers.JobEventObservableImpl;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
+import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventObservable;
+import com.be.android.library.worker.models.JobResultStatus;
 import com.be.android.library.worker.util.JobFutureResult;
 
 import java.util.ArrayList;
@@ -418,10 +420,34 @@ public abstract class BaseJob extends JobObservable {
         }
     }
 
+    private static boolean checkEventStatusIntegrity(JobEvent event) {
+        final int eventCode = event.getEventCode();
+        final JobStatus status = event.getJobStatus();
+
+        return !((eventCode == JobEvent.EVENT_CODE_OK && status == JobStatus.FAILED)
+                    || (eventCode == JobEvent.EVENT_CODE_FAILED && status == JobStatus.OK));
+    }
+
     @Override
     public JobEvent execute() {
         setStatus(JobStatus.IN_PROGRESS);
 
+        JobEvent result = wrappedExecute();
+
+        mIsFinished = true;
+
+        if (isCancelled() || Thread.interrupted()) {
+            result = new JobEvent(JobEvent.EVENT_CODE_CANCELLED, JobStatus.CANCELLED);
+        }
+
+        setStatusSilent(result.getJobStatus());
+
+        notifyJobEvent(result);
+
+        return result;
+    }
+
+    private JobEvent wrappedExecute() {
         JobEvent jobEvent;
         try {
             performPauseIfPaused();
@@ -447,9 +473,7 @@ public abstract class BaseJob extends JobObservable {
                         "status; result status: '%s'", JobStatus.OK, JobStatus.FAILED, status));
             }
 
-            if ((resultCode == JobEvent.EVENT_CODE_OK && status == JobStatus.FAILED)
-                    || (resultCode == JobEvent.EVENT_CODE_FAILED && status == JobStatus.OK)) {
-
+            if (!checkEventStatusIntegrity(jobEvent)) {
                 throw new JobExecutionException(String.format("inconsistent job result code " +
                         "and status returned; result: %d, status: %s", resultCode, status));
             }
@@ -463,38 +487,41 @@ public abstract class BaseJob extends JobObservable {
             mExecutionHandler.onPostExecute(jobEvent);
 
         } catch (Exception e) {
-            mExecutionHandler.onExceptionCaughtBase(e);
+            setStatusSilent(JobStatus.FAILED);
 
-            if (isCancelled() || Thread.interrupted()) {
-                mIsCancelled = true;
-                setStatusSilent(JobStatus.CANCELLED);
+            if (e instanceof JobExecutionException) {
+                final JobExecutionException ex = (JobExecutionException) e;
+                final JobEvent exceptionEvent = ex.getJobEvent();
+                if (exceptionEvent != null) {
+                    final int eventCode = exceptionEvent.getEventCode();
+                    final JobStatus status = exceptionEvent.getJobStatus();
 
-                jobEvent = new JobEvent(JobEvent.EVENT_CODE_CANCELLED);
-                mIsFinished = true;
-                notifyJobEvent(jobEvent);
+                    if (eventCode == JobEvent.EVENT_CODE_OK || status == JobStatus.OK) {
+                        mExecutionHandler.onExceptionCaughtBase(
+                                new JobExecutionException(
+                                        String.format("illegal job result " +
+                                                        "code or status obtained from JobExecutionException; result: " +
+                                                        "%d, status: %s",
+                                                eventCode,
+                                                status)
+                                )
+                        );
 
-                return jobEvent;
+                    } else {
+                        mExecutionHandler.onExceptionCaughtBase(e);
+
+                        return exceptionEvent;
+                    }
+                }
             }
 
-            setStatusSilent(JobStatus.FAILED);
+            mExecutionHandler.onExceptionCaughtBase(e);
+
             jobEvent = new JobEvent(JobEvent.EVENT_CODE_FAILED);
             jobEvent.setUncaughtException(e);
 
-            mIsFinished = true;
-            notifyJobEvent(jobEvent);
-
             return jobEvent;
         }
-
-        if (isCancelled()) {
-            setStatusSilent(JobStatus.CANCELLED);
-            jobEvent.setEventCode(JobEvent.EVENT_CODE_CANCELLED);
-        } else {
-            setStatusSilent(jobEvent.getJobStatus());
-        }
-
-        mIsFinished = true;
-        notifyJobEvent(jobEvent);
 
         return jobEvent;
     }
