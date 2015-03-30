@@ -440,7 +440,12 @@ public abstract class BaseJob extends JobObservable {
             result = new JobEvent(JobEvent.EVENT_CODE_CANCELLED, JobStatus.CANCELLED);
         }
 
-        setStatusSilent(result.getJobStatus());
+        final JobStatus status = result.getJobStatus();
+        if (status != null) {
+            setStatusSilent(status);
+        } else {
+            setStatusSilent(JobStatus.FAILED);
+        }
 
         notifyJobEvent(result);
 
