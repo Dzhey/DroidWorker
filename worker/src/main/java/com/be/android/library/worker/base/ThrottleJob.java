@@ -49,8 +49,8 @@ public class ThrottleJob extends ForkJoinJob {
     }
 
     protected JobEvent executeTargetJob(ForkJoinJob mTargetJob) throws JobExecutionException {
+        // TODO: execute in the same group
         return buildFork(mTargetJob)
-                .groupOnTheSameGroup()
                 .setForwardEvents(true)
                 .fork()
                 .join();

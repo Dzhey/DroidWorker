@@ -49,8 +49,9 @@ public class JobLoader {
         }
 
         job = callbacks.onCreateJob(mAttachTag);
-        if (job.hasTag(mAttachTag) == false) {
-            job.addTag(mAttachTag);
+        if (!job.getParams().hasTag(mAttachTag)) {
+            throw new IllegalStateException(
+                    String.format("requested job has to have tag '%s'", mAttachTag));
         }
 
         return eventHandler.submitJob(job);

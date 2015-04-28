@@ -3,7 +3,7 @@ package com.be.android.library.worker.base;
 import com.be.android.library.worker.models.JobResultStatus;
 
 public enum JobStatus {
-    PENDING, ENQUEUED, SUBMITTED, IN_PROGRESS, OK, FAILED, CANCELLED;
+    PENDING, IN_PROGRESS, OK, FAILED, CANCELLED;
 
     static JobStatus fromJobResultStatus(JobResultStatus status) {
         switch (status) {
@@ -17,6 +17,4 @@ public enum JobStatus {
                         status, JobStatus.class.getSimpleName()));
         }
     }
-
-
 }

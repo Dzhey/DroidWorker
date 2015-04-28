@@ -1,21 +1,15 @@
 package com.be.android.library.worker.base;
 
-import com.be.android.library.worker.controllers.JobManager;
-import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.JobResultStatus;
 import com.be.android.library.worker.util.EventCreator;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 public class JobEvent {
 
     public static class Builder {
 
         private JobEvent mEvent;
-        private boolean mIsFinished;
+        private boolean mIsBuilt;
 
         public Builder() {
             mEvent = new JobEvent();
@@ -25,8 +19,8 @@ public class JobEvent {
             mEvent = new JobEvent(fromEvent);
         }
 
-        private void throwIfFinished() {
-            if (mIsFinished) {
+        private void throwIfBuilt() {
+            if (mIsBuilt) {
                 throw new IllegalStateException("event is already built");
             }
         }
@@ -39,16 +33,16 @@ public class JobEvent {
             return mEvent;
         }
 
-        public Builder jobId(int jobId) {
-            throwIfFinished();
+        public Builder params(JobParams params) {
+            throwIfBuilt();
 
-            mEvent.setJobId(jobId);
+            mEvent.mJobParams = params;
 
             return this;
         }
 
         public Builder eventCode(int eventCode) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mEvent.setEventCode(eventCode);
 
@@ -56,7 +50,7 @@ public class JobEvent {
         }
 
         public Builder extraCode(int extraCode) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mEvent.setExtraCode(extraCode);
 
@@ -64,7 +58,7 @@ public class JobEvent {
         }
 
         public Builder jobStatus(JobResultStatus jobResultStatus) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mEvent.setJobStatus(JobStatus.fromJobResultStatus(jobResultStatus));
 
@@ -72,45 +66,15 @@ public class JobEvent {
         }
 
         public Builder jobStatus(JobStatus jobStatus) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mEvent.setJobStatus(jobStatus);
 
             return this;
         }
 
-        public Builder groupId(int jobGroupId) {
-            throwIfFinished();
-
-            mEvent.setJobGroupId(jobGroupId);
-
-            return this;
-        }
-
-        public Builder setJobFinished(boolean isFinished) {
-            throwIfFinished();
-
-            mEvent.setJobFinished(isFinished);
-
-            return this;
-        }
-
-        public Builder setJobFinished() {
-            throwIfFinished();
-
-            return setJobFinished(true);
-        }
-
-        public Builder job(Job job) {
-            throwIfFinished();
-
-            mEvent.setJob(job);
-
-            return this;
-        }
-
         public Builder uncaughtException(Exception uncaughtException) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mEvent.setUncaughtException(uncaughtException);
 
@@ -118,55 +82,33 @@ public class JobEvent {
         }
 
         public Builder extraMessage(String extraMessage) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mEvent.setExtraMessage(extraMessage);
 
             return this;
         }
 
-        public Builder addTag(String tag) {
-            throwIfFinished();
+        public Builder payload(Object payload) {
+            throwIfBuilt();
 
-            if (tag == null) {
-                throw new IllegalArgumentException("tag == null");
-            }
-
-            if (mEvent.mJobTags == null) {
-                mEvent.mJobTags = new ArrayList<String>();
-            }
-
-            mEvent.mJobTags.add(tag);
-
-            return this;
-        }
-
-        public Builder removeTag(String tag) {
-            throwIfFinished();
-
-            if (tag == null) {
-                throw new IllegalArgumentException("tag == null");
-            }
-
-            if (mEvent.mJobTags != null) {
-                mEvent.mJobTags.remove(tag);
-            }
-
-            return this;
-        }
-
-        public Builder tags(List<String> tags) {
-            throwIfFinished();
-
-            mEvent.setJobTags(tags);
+            mEvent.setPayload(payload);
 
             return this;
         }
 
         public JobEvent build() {
-            throwIfFinished();
+            throwIfBuilt();
 
-            mIsFinished = true;
+            if (mEvent.mJobParams == null) {
+                throw new IllegalStateException("no job params defined");
+            }
+
+            if (mEvent.mJobStatus == null) {
+                throw new IllegalStateException("no job status defined");
+            }
+
+            mIsBuilt = true;
 
             return mEvent;
         }
@@ -185,8 +127,8 @@ public class JobEvent {
         }
 
         @Override
-        public EventBuilder<T> jobId(int jobId) {
-            super.jobId(jobId);
+        public EventBuilder<T> params(JobParams params) {
+            super.params(params);
 
             return this;
         }
@@ -220,34 +162,6 @@ public class JobEvent {
         }
 
         @Override
-        public EventBuilder<T> groupId(int jobGroupId) {
-            super.groupId(jobGroupId);
-
-            return this;
-        }
-
-        @Override
-        public EventBuilder<T> setJobFinished(boolean isFinished) {
-            super.setJobFinished(isFinished);
-
-            return this;
-        }
-
-        @Override
-        public EventBuilder<T> setJobFinished() {
-            super.setJobFinished();
-
-            return this;
-        }
-
-        @Override
-        public EventBuilder<T> job(Job job) {
-            super.job(job);
-
-            return this;
-        }
-
-        @Override
         public EventBuilder<T> uncaughtException(Exception uncaughtException) {
             super.uncaughtException(uncaughtException);
 
@@ -262,22 +176,8 @@ public class JobEvent {
         }
 
         @Override
-        public EventBuilder<T> addTag(String tag) {
-            super.addTag(tag);
-
-            return this;
-        }
-
-        @Override
-        public EventBuilder<T> removeTag(String tag) {
-            super.removeTag(tag);
-
-            return this;
-        }
-
-        @Override
-        public EventBuilder<T> tags(List<String> tags) {
-            super.tags(tags);
+        public EventBuilder<T> payload(Object payload) {
+            super.payload(payload);
 
             return this;
         }
@@ -298,17 +198,15 @@ public class JobEvent {
     public static final int EXTRA_CODE_STATUS_CHANGED = 1;
     public static final int EXTRA_CODE_PROGRESS_UPDATE = 2;
     public static final int EXTRA_CODE_STATUS_MESSAGE_CHANGED = 3;
+    public static final int EXTRA_CODE_FLAG_STATUS_CHANGED = 4;
 
-    private int mJobId = JobManager.JOB_ID_UNSPECIFIED;
-    private int mJobGroupId = JobManager.JOB_GROUP_DEFAULT;
     private int mEventCode = EVENT_CODE_UNSPECIFIED;
     private int mExtraCode = EXTRA_CODE_UNSPECIFIED;
     private JobStatus mJobStatus;
-    private boolean mIsJobFinished;
     private Exception mUncaughtException;
     private String mExtraMessage;
-    private List<String> mJobTags;
-    private Job mJob;
+    private JobParams mJobParams;
+    private Object mPayload;
 
     public static JobEvent fromEvent(JobEvent e) {
         return new JobEvent(e);
@@ -406,32 +304,31 @@ public class JobEvent {
     protected JobEvent() {
     }
 
-    protected void copyFrom(JobEvent other) {
-        mJobGroupId = other.mJobGroupId;
+    public int getJobId() {
+        return mJobParams.getJobId();
+    }
+
+    public boolean isJobFinished() {
+        return mJobStatus == JobStatus.OK
+                || mJobStatus == JobStatus.FAILED
+                || mJobStatus == JobStatus.CANCELLED;
+    }
+
+    protected final void copyFrom(JobEvent other) {
         mEventCode = other.mEventCode;
         mExtraCode = other.mExtraCode;
-        mJobTags = other.mJobTags;
         mJobStatus = other.mJobStatus;
-        mJob = other.mJob;
         mUncaughtException = other.mUncaughtException;
         mExtraMessage = other.mExtraMessage;
-        mIsJobFinished = other.mIsJobFinished;
+        mJobParams = other.mJobParams;
     }
 
-    public int getJobId() {
-        return mJobId;
+    public JobParams getJobParams() {
+        return mJobParams;
     }
 
-    protected void setJobId(int jobId) {
-        mJobId = jobId;
-    }
-
-    public int getJobGroupId() {
-        return mJobGroupId;
-    }
-
-    protected void setJobGroupId(int jobGroupId) {
-        mJobGroupId = jobGroupId;
+    protected void setJobParams(JobParams jobParams) {
+        mJobParams = jobParams;
     }
 
     public int getEventCode() {
@@ -462,33 +359,6 @@ public class JobEvent {
         mJobStatus = JobStatus.fromJobResultStatus(jobStatus);
     }
 
-    public List<String> getJobTags() {
-        if (mJobTags == null) {
-            return Collections.emptyList();
-        }
-
-        return Collections.unmodifiableList(mJobTags);
-    }
-
-    protected void setJobTags(Collection<String> jobTags) {
-        if (jobTags == null) {
-            mJobTags = null;
-            return;
-        }
-
-        if (mJobTags == null) {
-            mJobTags = new ArrayList<String>();
-        } else {
-            mJobTags.clear();
-        }
-
-        mJobTags.addAll(jobTags);
-    }
-
-    public boolean isJobIdAssigned() {
-        return mJobId != JobManager.JOB_ID_UNSPECIFIED;
-    }
-
     public boolean isEventCodeSpecified() {
         return mEventCode != EVENT_CODE_UNSPECIFIED;
     }
@@ -517,34 +387,12 @@ public class JobEvent {
         return this;
     }
 
-    public Job getJob() {
-        return mJob;
+    public Object getPayload() {
+        return mPayload;
     }
 
-    protected void setJob(Job job) {
-        this.mJob = job;
-    }
-
-    public boolean isJobFinished() {
-        return mIsJobFinished;
-    }
-
-    protected void setJobFinished(boolean isJobFinished) {
-        this.mIsJobFinished = isJobFinished;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() +
-                "{" +
-                "mEventCode=" + mEventCode +
-                ", mExtraCode=" + mExtraCode +
-                ", mJobId=" + mJobId +
-                ", mJobGroupId=" + mJobGroupId +
-                ", mJobStatus=" + mJobStatus +
-                ", mUncaughtException=" + mUncaughtException +
-                ", mExtraMessage='" + mExtraMessage + '\'' +
-                '}';
+    protected void setPayload(Object payload) {
+        mPayload = payload;
     }
 
     @Override
@@ -554,10 +402,12 @@ public class JobEvent {
 
         JobEvent jobEvent = (JobEvent) o;
 
-        if (mJobGroupId != jobEvent.mJobGroupId) return false;
-        if (mJobId != jobEvent.mJobId) return false;
         if (mEventCode != jobEvent.mEventCode) return false;
         if (mExtraCode != jobEvent.mExtraCode) return false;
+        if (mExtraMessage != null ? !mExtraMessage.equals(jobEvent.mExtraMessage) : jobEvent.mExtraMessage != null)
+            return false;
+        if (mJobParams != null ? !mJobParams.equals(jobEvent.mJobParams) : jobEvent.mJobParams != null)
+            return false;
         if (mJobStatus != jobEvent.mJobStatus) return false;
         if (mUncaughtException != null ? !mUncaughtException.equals(jobEvent.mUncaughtException) : jobEvent.mUncaughtException != null)
             return false;
@@ -568,11 +418,23 @@ public class JobEvent {
     @Override
     public int hashCode() {
         int result = mEventCode;
-        result = 31 * result + mJobId;
         result = 31 * result + mExtraCode;
-        result = 31 * result + mJobGroupId;
-        result = 31 * result + mJobStatus.hashCode();
+        result = 31 * result + (mJobStatus != null ? mJobStatus.hashCode() : 0);
         result = 31 * result + (mUncaughtException != null ? mUncaughtException.hashCode() : 0);
+        result = 31 * result + (mExtraMessage != null ? mExtraMessage.hashCode() : 0);
+        result = 31 * result + (mJobParams != null ? mJobParams.hashCode() : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "JobEvent{" +
+                "mEventCode=" + mEventCode +
+                ", mExtraCode=" + mExtraCode +
+                ", mJobStatus=" + mJobStatus +
+                ", mUncaughtException=" + mUncaughtException +
+                ", mExtraMessage='" + mExtraMessage + '\'' +
+                ", mJobParams=" + mJobParams +
+                '}';
     }
 }

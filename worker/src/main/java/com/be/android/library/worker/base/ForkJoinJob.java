@@ -7,8 +7,11 @@ import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
+import com.be.android.library.worker.models.Flag;
+import com.be.android.library.worker.models.Flags;
 import com.be.android.library.worker.models.JobFutureResultStub;
-import com.be.android.library.worker.models.JobId;
+import com.be.android.library.worker.models.Params;
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.util.JobEventFilter;
 import com.be.android.library.worker.util.JobFutureEvent;
 
@@ -17,7 +20,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -40,70 +42,44 @@ public abstract class ForkJoinJob extends BaseJob {
      */
     private final SparseArray<Future<JobEvent>> mPendingResults;
     private final ReadWriteLock mLock;
-    private final LinkedList<JobId> mParentJobsPath;
-    private boolean shouldForwardForkEventsByDefault;
+    private final LinkedList<JobParams> mParentJobsPath;
 
     protected ForkJoinJob() {
-        this(false, (String[]) null);
-    }
-
-    protected ForkJoinJob(String... tags) {
-        this(false, tags);
-    }
-
-    protected ForkJoinJob(boolean shouldForwardForkEventsByDefault) {
-        this(shouldForwardForkEventsByDefault, (String[]) null);
-    }
-
-    protected ForkJoinJob(boolean shouldForwardForkEventsByDefault, String... tags) {
-        super(tags);
-
         mPendingResults = new SparseArray<Future<JobEvent>>();
         mLock = new ReentrantReadWriteLock(false);
-        mParentJobsPath = new LinkedList<JobId>();
-        this.shouldForwardForkEventsByDefault = shouldForwardForkEventsByDefault;
+        mParentJobsPath = new LinkedList<JobParams>();
     }
 
     @Override
     public void onReset() {
         mPendingResults.clear();
         mParentJobsPath.clear();
-        shouldForwardForkEventsByDefault = false;
-    }
-
-    public boolean shouldForwardForkEventsByDefault() {
-        return shouldForwardForkEventsByDefault;
-    }
-
-    public void setShouldForwardForkEventsByDefault(boolean shouldForwardForkEventsByDefault) {
-        this.shouldForwardForkEventsByDefault = shouldForwardForkEventsByDefault;
     }
 
     /**
-     * Set parent groups path
-     * @param parents list of parent group identifiers
+     * Set parents params
+     * @param parents list of parent group params
      */
-    private void setParentJobsPath(Collection<JobId> parents) {
+    private void setParentJobsPath(Collection<JobParams> parents) {
         mParentJobsPath.clear();
         mParentJobsPath.addAll(parents);
     }
 
     /**
-     * Retrieve parent groups path
+     * Retrieve parents params
      */
-    protected List<JobId> getParentJobsPath() {
+    protected List<JobParams> getParentJobsPath() {
         return Collections.unmodifiableList(mParentJobsPath);
     }
 
-    protected JobId findParentForGroupId(int groupId) {
+    protected JobParams findParentForGroupId(int groupId) {
         final Lock lock = mLock.readLock();
         lock.lock();
 
         try {
-
-            for (JobId id : mParentJobsPath) {
-                if (id.getJobGroupId() == groupId) {
-                    return id;
+            for (JobParams params : mParentJobsPath) {
+                if (params.getGroupId() == groupId) {
+                    return params;
                 }
             }
 
@@ -119,19 +95,6 @@ public abstract class ForkJoinJob extends BaseJob {
     }
 
     /**
-     * Similar to {@link #forkJob(ForkJoinJob)} but job will execute on specified group
-     * @param jobGroupId job group to associate specified job with
-     * @param job job to submit or execute
-     * @return pending job result
-     */
-    protected ForkJoiner forkJob(int jobGroupId, ForkJoinJob job) throws JobExecutionException {
-        return buildFork(job)
-                .setForwardEvents(shouldForwardForkEventsByDefault())
-                .groupOn(jobGroupId)
-                .fork();
-    }
-
-    /**
      * Execute specified job asynchronously.
      * Job should have different group id to execute in parallel with caller job.
      * Same group id will cause job to execute immediately except
@@ -141,33 +104,35 @@ public abstract class ForkJoinJob extends BaseJob {
      * @return pending job result
      */
     protected ForkJoiner forkJob(ForkJoinJob forkJob) throws JobExecutionException {
-        return buildFork(forkJob)
-                .setForwardEvents(shouldForwardForkEventsByDefault())
-                .fork();
+        return buildFork(forkJob).fork();
     }
 
     public boolean isValidForkGroup(int forkGroupId) {
-        return forkGroupId == getGroupId()
+        return forkGroupId == getParams().getGroupId()
                 || JobManager.isSpecialJobGroup(forkGroupId)
                 || JobManager.isDefaultJobGroup(forkGroupId)
                 || findParentForGroupId(forkGroupId) == null;
     }
 
     private ForkJoiner forkJobImpl(ForkBuilder forkBuilder) throws JobExecutionException {
-        if (isJobIdAssigned() == false) {
+        if (!hasParams()) {
             throw new IllegalStateException(String.format("Cannot fork unbound job '%s'. " +
                     "Please submit job on job manager before trying to fork.", this));
         }
 
         final ForkJoinJob forkJob = forkBuilder.getJob();
-        final int groupId = getGroupId();
-        final int forkGroupId = forkJob.getGroupId();
+        if (!forkJob.hasParams()) {
+            forkJob.setup().build();
+        }
+
+        final int groupId = getParams().getGroupId();
+        final int forkGroupId = forkJob.getParams().getGroupId();
 
         final Lock lock = mLock.writeLock();
         lock.lock();
         try {
-            final List<JobId> parentsPath = new ArrayList<JobId>(getParentJobsPath());
-            if (isValidForkGroup(forkGroupId) == false) {
+            final List<JobParams> parentsPath = new ArrayList<JobParams>(getParentJobsPath());
+            if (!isValidForkGroup(forkGroupId)) {
                 throw new IllegalArgumentException(String.format(
                         "One or more fork job '%s' parents '%s' share the same group id '%s'; " +
                                 "this way fork job may not be submitted as it would have " +
@@ -177,29 +142,40 @@ public abstract class ForkJoinJob extends BaseJob {
                         parentsPath,
                         groupId));
             }
-            parentsPath.add(JobId.of(this));
+            parentsPath.add(getParams());
             forkJob.setParentJobsPath(parentsPath);
 
             Future<JobEvent> pendingResult;
-            if (JobManager.isSpecialJobGroup(forkGroupId) == false &&
+            if (!JobManager.isSpecialJobGroup(forkGroupId) &&
                     (forkGroupId == groupId || JobManager.isDefaultJobGroup(forkGroupId))) {
 
                 // Execute job with the same or default group id immediately
-                if (forkJob.isJobIdAssigned() == false) {
-                    forkJob.setJobId(generateJobId());
+                if (!forkJob.hasParams()) {
+                    forkJob.setup().apply();
+                } else {
+                    if (forkJob.getParams().isJobIdAssigned()) {
+                        throw new IllegalArgumentException("fork job already has assigned job id");
+                    }
                 }
+                forkJob.getParams().assignJobId(generateJobId());
                 pendingResult = new JobFutureResultStub(forkJob.execute());
 
             } else {
-                final Object forkPauseToken = new Object();
                 final JobFutureEvent futureEvent = new JobFutureEvent(forkJob,
                         new JobEventFilter.Builder()
                                 .pendingEventCode(JobEvent.EVENT_CODE_UPDATE)
                                 .pendingExtraCode(JobEvent.EXTRA_CODE_STATUS_CHANGED)
-                                .pendingStatus(JobStatus.ENQUEUED, JobStatus.SUBMITTED)
+                                .pendingFlags(
+                                        Flag.create(Params.FLAG_JOB_ENQUEUED, true),
+                                        Flag.create(Params.FLAG_JOB_SUBMITTED, true))
                                 .build());
-                forkJob.setPaused(forkPauseToken, true);
-                forkJob.setExecutionFlags(forkJob.getExecutionFlags() | Job.EXECUTION_FLAG_FORCE_EXECUTE);
+                forkJob.pause();
+
+                final Params paramsCopy = forkJob.getParams()
+                        .copyWithBuilder()
+                        .flag(JobParams.FLAG_FORCE_EXECUTE, true)
+                        .build();
+                forkJob.setParams(paramsCopy);
                 pendingResult = JobManager.getInstance().submitJobForResult(forkJob);
 
                 try {
@@ -207,11 +183,10 @@ public abstract class ForkJoinJob extends BaseJob {
 
                     // Validate correct unique job execution
                     if (forkGroupId == JobManager.JOB_GROUP_UNIQUE
-                            && (forkJob.getStatus() == JobStatus.PENDING
-                                || forkJob.getStatus() == JobStatus.ENQUEUED)) {
+                            && forkJob.getParams().checkFlag(JobParams.FLAG_JOB_SUBMITTED) == false) {
 
                         forkJob.cancel();
-                        JobManager.getInstance().discardJob(forkJob.getJobId());
+                        JobManager.getInstance().discardJob(forkJob.getParams().getJobId());
 
                         throw new JobExecutionException(String.format(
                                 "Unable to execute unique-grouped job fork '%s'. " +
@@ -230,11 +205,11 @@ public abstract class ForkJoinJob extends BaseJob {
                     throw new JobExecutionException(e);
 
                 } finally {
-                    forkJob.setPaused(forkPauseToken, false);
+                    forkJob.unpause();
                 }
             }
 
-            mPendingResults.append(forkJob.getJobId(), pendingResult);
+            mPendingResults.append(forkJob.getParams().getJobId(), pendingResult);
 
             return new ForkJoinerImpl(forkJob, pendingResult);
 
@@ -266,20 +241,17 @@ public abstract class ForkJoinJob extends BaseJob {
 
         if (onForwardJobEvent(event)) {
             JobEvent forkEvent = new JobEvent(event);
-            forkEvent.setJobId(getJobId());
+            forkEvent.setJobParams(getParams());
             forkEvent.setJobStatus(getStatus());
-            forkEvent.setJobTags(getTags());
-            forkEvent.setJobGroupId(getGroupId());
             notifyJobEventImpl(forkEvent);
         }
     }
 
     /**
-     * Await until specified job complete it's execution and return result.
+     * Await until specified job completes it's execution and return result.
      *
      * @param joinJob job to join
      * @return fork job result
-     * @throws JobExecutionException thrown on InterruptedException or ExecutionException
      */
     protected JobEvent joinJob(ForkJoinJob joinJob) {
         Future<JobEvent> pendingResult = findPendingResult(joinJob);
@@ -307,8 +279,14 @@ public abstract class ForkJoinJob extends BaseJob {
     protected Future<JobEvent> findPendingResult(ForkJoinJob forkJob) {
         final Lock lock = mLock.readLock();
         lock.lock();
+        final JobParams params = forkJob.getParams();
+
+        if (params == null || !params.isJobIdAssigned()) {
+            return null;
+        }
+
         try {
-            return mPendingResults.get(forkJob.getJobId());
+            return mPendingResults.get(params.getJobId());
 
         } finally {
             lock.unlock();
@@ -330,18 +308,6 @@ public abstract class ForkJoinJob extends BaseJob {
             this.job = job;
         }
 
-        public ForkBuilder groupOn(int jobGroupId) {
-            job.setGroupId(jobGroupId);
-
-            return this;
-        }
-
-        public ForkBuilder groupOnTheSameGroup() {
-            groupOn(JobManager.JOB_GROUP_DEFAULT);
-
-            return this;
-        }
-
         ForkJoinJob getJob() {
             return job;
         }
@@ -351,7 +317,7 @@ public abstract class ForkJoinJob extends BaseJob {
                 job.removeJobEventListener(mForwardEventListener);
 
             } else {
-                if (job.hasJobEventListener(mForwardEventListener) == false) {
+                if (!job.hasJobEventListener(mForwardEventListener)) {
                     job.addJobEventListener(mForwardEventListener);
                 }
             }

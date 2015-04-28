@@ -13,9 +13,8 @@ public class CallableForkJoinJob extends ForkJoinJob {
 
     private final Callable<JobEvent> mCallable;
 
-    public CallableForkJoinJob(int jobGroupId, Callable<JobEvent> callable) {
+    public CallableForkJoinJob(Callable<JobEvent> callable) {
         mCallable = callable;
-        setGroupId(jobGroupId);
     }
 
     @Override

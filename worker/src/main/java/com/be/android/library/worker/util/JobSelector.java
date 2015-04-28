@@ -40,7 +40,7 @@ public class JobSelector {
 
     public boolean apply(Job job) {
         if (mJobIds != null
-                && job.isJobIdAssigned()
+                && job.hasId()
                 && Arrays.binarySearch(mJobIds, job.getJobId()) < 0) {
 
             return false;
@@ -62,11 +62,8 @@ public class JobSelector {
         }
 
         if (mJobTags != null) {
-            Collection<String> tags = job.getTags();
-            for (String tag : mJobTags) {
-                if (tags.contains(tag) == false) {
-                    return false;
-                }
+            if (!job.getParams().hasTags(mJobTags)) {
+                return false;
             }
         }
 

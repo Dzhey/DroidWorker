@@ -2,22 +2,26 @@ package com.be.android.library.worker.util;
 
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobStatus;
+import com.be.android.library.worker.interfaces.FlagsProvider;
 import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.models.Flag;
+import com.be.android.library.worker.models.JobParams;
 
+import java.util.Collection;
 import java.util.List;
 
 public class JobEventFilter {
 
     public static class Builder {
         private JobEventFilter mJobEventFilter;
-        private boolean mIsFinished;
+        private boolean mIsBuilt;
 
         public Builder() {
             mJobEventFilter = new JobEventFilter();
         }
 
         public Builder pendingStatus(JobStatus... status) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mJobEventFilter.mPendingStatus = status;
 
@@ -25,7 +29,7 @@ public class JobEventFilter {
         }
 
         public Builder pendingEventCode(int... eventCode) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mJobEventFilter.mPendingEventCode = eventCode;
 
@@ -33,7 +37,7 @@ public class JobEventFilter {
         }
 
         public Builder pendingExtraCode(int... extraCode) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mJobEventFilter.mPendingExtraCode = extraCode;
 
@@ -41,15 +45,31 @@ public class JobEventFilter {
         }
 
         public Builder pendingTags(String... tags) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mJobEventFilter.mPendingTags = tags;
 
             return this;
         }
 
+        public Builder pendingFlags(Flag... flags) {
+            throwIfBuilt();
+
+            mJobEventFilter.mPendingFlags = flags;
+
+            return this;
+        }
+
+        public Builder pendingFlags(Collection<Flag> flags) {
+            throwIfBuilt();
+
+            mJobEventFilter.mPendingFlags = flags.toArray(new Flag[flags.size()]);
+
+            return this;
+        }
+
         public Builder pendingJobType(Class<? extends Job> jobType) {
-            throwIfFinished();
+            throwIfBuilt();
 
             mJobEventFilter.mPendingJobType = jobType;
 
@@ -57,21 +77,22 @@ public class JobEventFilter {
         }
 
         public JobEventFilter build() {
-            throwIfFinished();
+            throwIfBuilt();
 
-            mIsFinished = true;
+            mIsBuilt = true;
 
             return mJobEventFilter;
         }
 
-        private void throwIfFinished() {
-            if (mIsFinished) {
+        private void throwIfBuilt() {
+            if (mIsBuilt) {
                 throw new IllegalStateException("event is already built");
             }
         }
     }
 
     private JobStatus[] mPendingStatus;
+    private Flag[] mPendingFlags;
     private int[] mPendingEventCode;
     private int[] mPendingExtraCode;
     private String[] mPendingTags;
@@ -85,7 +106,8 @@ public class JobEventFilter {
                 && checkPendingJobType(event)
                 && checkPendingEventCode(event)
                 && checkPendingExtraCode(event)
-                && checkPendingTags(event);
+                && checkPendingTags(event)
+                && checkPendingFlags(event);
     }
 
     protected boolean checkPendingJobType(JobEvent event) {
@@ -95,7 +117,7 @@ public class JobEventFilter {
             return true;
         }
 
-        return pendingJobType.equals(event.getJob().getClass());
+        return pendingJobType.getName().equals(event.getJobParams().getJobClassName());
     }
 
     protected boolean checkPendingStatus(JobEvent event) {
@@ -145,10 +167,27 @@ public class JobEventFilter {
             return true;
         }
 
-        final List<String> jobTags = event.getJobTags();
+        if (event.getJobParams().hasTags(mPendingTags) == false) {
+            return false;
+        }
 
-        for (String pendingTag : mPendingTags) {
-            if (jobTags.contains(pendingTag) == false) {
+        return true;
+    }
+
+    protected boolean checkPendingFlags(JobEvent event) {
+        if (mPendingFlags == null || mPendingFlags.length == 0) {
+            return true;
+        }
+
+        final FlagsProvider flags = event.getJobParams().getFlags();
+        for (Flag pendingFlag : mPendingFlags) {
+            final String name = pendingFlag.getName();
+
+            if (!flags.hasFlag(name)) {
+                return false;
+            }
+
+            if (!flags.checkFlag(name) == pendingFlag.getValue()) {
                 return false;
             }
         }

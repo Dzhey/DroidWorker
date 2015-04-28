@@ -1,12 +1,12 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 21
+    compileSdkVersion 22
     buildToolsVersion "21.1.2"
 
     defaultConfig {
         minSdkVersion 8
-        targetSdkVersion 21
+        targetSdkVersion 22
         versionCode 1
         versionName "0.1.0"
     }
@@ -22,6 +22,12 @@ android {
         encoding = 'utf-8'
         sourceCompatibility JavaVersion.VERSION_1_6
         targetCompatibility JavaVersion.VERSION_1_6
+    }
+
+    lintOptions {
+        quiet false
+        abortOnError true
+        ignoreWarnings false
     }
 
     libraryVariants.all { variant ->

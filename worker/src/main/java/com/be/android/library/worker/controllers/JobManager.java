@@ -11,7 +11,6 @@ import com.be.android.library.worker.util.JobFutureResult;
 import com.be.android.library.worker.util.JobSelector;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -86,10 +85,15 @@ public abstract class JobManager implements JobEventObservable {
     }
 
     public int submitJob(Job job) {
+        // Set default params to job if needed
+        if (!job.hasParams()) {
+            job.setup().apply();
+        }
+
         checkJobPreconditions(job);
 
         final int jobId = mJobIdCounter.incrementAndGet();
-        job.setJobId(jobId);
+        job.getParams().assignJobId(jobId);
         job.addJobEventListener(mJobEventListener);
 
         mJobs.add(job);
@@ -211,20 +215,21 @@ public abstract class JobManager implements JobEventObservable {
         if (job == null) {
             throw new IllegalArgumentException("job is null");
         }
-        if (job.getJobId() != JOB_ID_UNSPECIFIED || job.getStatus() != JobStatus.PENDING) {
+
+        if (job.hasId() || job.getStatus() != JobStatus.PENDING) {
             throw new IllegalArgumentException(
-                    "job is already submitted or it's status manually changed");
+                    "job is already submitted, you may need to reset this job");
         }
     }
 
     private void handleJobEvent(JobEvent event) {
-        Job job = findJob(event.getJobId());
+        Job job = findJob(event.getJobParams().getJobId());
 
         if (event.isJobFinished()) {
             if (job != null) {
                 job.removeJobEventListener(mJobEventListener);
             }
-            discardJob(event.getJobId());
+            discardJob(event.getJobParams().getJobId());
         }
 
         notifyJobEvent(event);

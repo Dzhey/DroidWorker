@@ -246,7 +246,7 @@ public class JobEventObservableImpl implements JobEventObservable {
             throw new IllegalArgumentException("can't post job event: job status is not specified");
         }
 
-        if (event.getJob() == null) {
+        if (event.getJobParams() == null) {
             throw new IllegalArgumentException("can't post job event: job is not specified");
         }
     }
