@@ -172,7 +172,7 @@ public abstract class WorkerService extends Service {
 
         if (mWorker != null) {
             synchronized (this) {
-                mWorker.stop();
+                mWorker.finish();
                 mWorker = null;
             }
         }

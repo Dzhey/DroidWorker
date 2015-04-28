@@ -566,13 +566,12 @@ public class ThreadPoolWorker implements Worker {
         }
     }
 
-    @Override
     public boolean isStopped() {
         return mIsStopped.get();
     }
 
     @Override
-    public void stop() {
+    public void finish() {
         logTrace(">stopping thread pool worker..");
         mDispatchLock.lock();
         try {
