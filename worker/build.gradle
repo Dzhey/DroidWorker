@@ -41,6 +41,33 @@ android {
     }
 }
 
+sourceSets {
+    unitTest {
+        java.srcDir file('test/java')
+    }
+}
+
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+
+//    testCompile "org.robolectric:robolectric:3.0-SNAPSHOT"
+
+    testCompile 'junit:junit:4.12'
+    testCompile ("org.mockito:mockito-core:1.9.5") {
+        exclude group: 'org.hamcrest'
+    }
+    // Mockito and PowerMock
+//    testCompile 'org.powermock:powermock-mockito-release-full:1.6.0'
+    testCompile ('org.powermock:powermock-module-junit4:1.6.2') {
+        exclude group: 'org.hamcrest'
+    }
+    testCompile ('org.powermock:powermock-api-mockito:1.6.2') {
+        exclude group: 'org.hamcrest'
+    }
+}
+
+tasks.withType(Test) {
+    testLogging {
+        events 'started', 'passed'
+    }
 }
