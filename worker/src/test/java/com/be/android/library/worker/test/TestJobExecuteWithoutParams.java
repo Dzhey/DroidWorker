@@ -1,7 +1,10 @@
+package com.be.android.library.worker.test;
+
 import com.be.android.library.worker.base.BaseJob;
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobStatus;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,17 +22,19 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.validateMockitoUsage;
 import static org.mockito.Mockito.verify;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(BaseJob.class)
-public class TestJobWithoutParams {
+public class TestJobExecuteWithoutParams {
 
     private BaseJob mBaseJob;
 
     @Before
     public void setUp() {
         mBaseJob = PowerMockito.spy(new BaseJob() {
+
             @Override
             protected JobEvent executeImpl() throws Exception {
                 return JobEvent.ok();
@@ -114,5 +119,10 @@ public class TestJobWithoutParams {
 
         inOrder.verify(mBaseJob).notifyJobEvent(arg.capture());
         assertEquals(JobStatus.FAILED, arg.getValue().getJobStatus());
+    }
+
+    @After
+    public void validate() {
+        validateMockitoUsage();
     }
 }

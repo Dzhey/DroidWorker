@@ -30,6 +30,10 @@ android {
         ignoreWarnings false
     }
 
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
     libraryVariants.all { variant ->
         variant.outputs.each { output ->
             def outputFile = output.outputFile
@@ -50,14 +54,11 @@ sourceSets {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 
-//    testCompile "org.robolectric:robolectric:3.0-SNAPSHOT"
-
+    // JUnit, Mockito and PowerMock
     testCompile 'junit:junit:4.12'
     testCompile ("org.mockito:mockito-core:1.9.5") {
         exclude group: 'org.hamcrest'
     }
-    // Mockito and PowerMock
-//    testCompile 'org.powermock:powermock-mockito-release-full:1.6.0'
     testCompile ('org.powermock:powermock-module-junit4:1.6.2') {
         exclude group: 'org.hamcrest'
     }

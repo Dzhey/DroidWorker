@@ -18,6 +18,7 @@ public class BaseJobConfigurator implements JobConfigurator {
             }
 
             final JobEvent event = new JobEvent.Builder()
+                    .jobStatus(mJob.getStatus())
                     .eventCode(JobEvent.EVENT_CODE_UPDATE)
                     .extraCode(JobEvent.EXTRA_CODE_FLAG_STATUS_CHANGED)
                     .payload(new Map.Entry<String,Boolean>() {
@@ -163,6 +164,10 @@ public class BaseJobConfigurator implements JobConfigurator {
 
     @Override
     public void apply() {
+        if (!isInitialized()) {
+            init();
+        }
+
         if (mParams == null) {
             mParams = mParamsBuilder.build();
             mParams.getFlags().addOnFlagSetListener(mOnFlagSetListener);
@@ -172,8 +177,12 @@ public class BaseJobConfigurator implements JobConfigurator {
         mJob.setParams(mParams);
     }
 
+    private boolean isInitialized() {
+        return mParamsBuilder != null;
+    }
+
     private void checkInitialized() {
-        if (mParamsBuilder == null) {
+        if (!isInitialized()) {
             throw new IllegalStateException("configurator is not initialized");
         }
     }

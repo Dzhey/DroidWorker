@@ -12,7 +12,7 @@ import java.util.concurrent.Future;
 public class ProfilerJob extends BaseJob {
 
     private static final SimpleDateFormat TIMESTAMP_FORMAT =
-            new SimpleDateFormat("hh:mm:ss:S");
+            new SimpleDateFormat("hh:mm:ss.S");
 
     private BaseJob mWrappedJob;
     private long mPreExecuteStartTimeMillis;
@@ -25,9 +25,15 @@ public class ProfilerJob extends BaseJob {
     private long mTotalExecuteEndTimeMillis;
 
     private final ExecutionHandler mExecutionHandler = new ExecutionHandler() {
+
+        @Override
+        public JobEvent onCheckPreconditions() throws Exception {
+            return ProfilerJob.this.onCheckPreconditions();
+        }
+
         @Override
         public void onPreExecute() throws Exception {
-            ProfilerJob.this.onPreExecuteBase();
+            ProfilerJob.this.onPreExecute();
         }
 
         @Override
@@ -41,7 +47,7 @@ public class ProfilerJob extends BaseJob {
         }
 
         @Override
-        public void onExceptionCaughtBase(Exception e) {
+        public void onExceptionCaught(Exception e) {
             ProfilerJob.this.onExceptionCaughtBase(e);
         }
 
@@ -144,7 +150,7 @@ public class ProfilerJob extends BaseJob {
         mPreExecuteStartTimeMillis = System.currentTimeMillis();
 
         try {
-            super.onPreExecuteBase();
+            super.onPreExecute();
 
         } finally {
             mPreExecuteEndTimeMillis = mPreExecuteStartTimeMillis
@@ -271,7 +277,7 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public JobEvent call() throws Exception {
+    public JobEvent call() {
         return mWrappedJob.execute();
     }
 

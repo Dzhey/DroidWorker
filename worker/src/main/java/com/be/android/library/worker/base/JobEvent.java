@@ -100,10 +100,6 @@ public class JobEvent {
         public JobEvent build() {
             throwIfBuilt();
 
-            if (mEvent.mJobParams == null) {
-                throw new IllegalStateException("no job params defined");
-            }
-
             if (mEvent.mJobStatus == null) {
                 throw new IllegalStateException("no job status defined");
             }
@@ -305,7 +301,19 @@ public class JobEvent {
     }
 
     public int getJobId() {
+        if (mJobParams == null) {
+            throw new IllegalStateException("no job params defined");
+        }
+
         return mJobParams.getJobId();
+    }
+
+    public boolean isJobIdAssigned() {
+        return mJobParams != null && mJobParams.isJobIdAssigned();
+    }
+
+    public boolean hasParams() {
+        return mJobParams != null;
     }
 
     public boolean isJobFinished() {

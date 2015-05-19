@@ -19,6 +19,7 @@ public interface JobParams extends FlagsProvider {
     public static final String FLAG_FORCE_EXECUTE = "com.be.android.library.worker.flags.FLAG_FORCE_EXECUTE";
     public static final String FLAG_JOB_ENQUEUED = "com.be.android.worker.params.FLAG_JOB_ENQUEUED";
     public static final String FLAG_JOB_SUBMITTED = "com.be.android.worker.params.FLAG_JOB_SUBMITTED";
+    public static final String FLAG_JOB_PAUSED = "com.be.android.worker.params.FLAG_JOB_PAUSED";
 
     JobParams copy();
 
