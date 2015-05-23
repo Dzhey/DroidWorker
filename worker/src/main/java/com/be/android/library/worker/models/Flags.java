@@ -119,7 +119,7 @@ public class Flags implements Parcelable, FlagsProvider {
             mFlags = new HashMap<String, Boolean>();
         }
 
-        final boolean hasChanged = checkFlag(flag) != value;
+        final boolean hasChanged = !hasFlag(flag) || checkFlag(flag) != value;
 
         if (hasChanged) {
             mFlags.put(flag, value);
@@ -184,9 +184,21 @@ public class Flags implements Parcelable, FlagsProvider {
     }
 
     public void addOnFlagSetListener(OnFlagSetListener onFlagSetListener) {
+        if (onFlagSetListener == null) {
+            throw new IllegalArgumentException("onFlagSetListener may not be null");
+        }
+
         synchronized (mMutex) {
             if (mOnFlagSetListeners == null) {
                 mOnFlagSetListeners = new CopyOnWriteArrayList<WeakReference<OnFlagSetListener>>();
+            }
+
+            for (WeakReference<OnFlagSetListener> ref : mOnFlagSetListeners) {
+                OnFlagSetListener listener = ref.get();
+
+                if (listener != null && listener.equals(onFlagSetListener)) {
+                    return;
+                }
             }
 
             mOnFlagSetListeners.add(new WeakReference<OnFlagSetListener>(onFlagSetListener));
@@ -195,6 +207,10 @@ public class Flags implements Parcelable, FlagsProvider {
 
     protected void notifyFlagSet(String flag, boolean newValue, boolean hasChanged) {
         synchronized (mMutex) {
+            if (mOnFlagSetListeners == null) {
+                return;
+            }
+
             for (WeakReference<OnFlagSetListener> ref : mOnFlagSetListeners) {
                 OnFlagSetListener listener = ref.get();
 

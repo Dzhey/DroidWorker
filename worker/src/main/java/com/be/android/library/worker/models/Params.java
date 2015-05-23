@@ -319,6 +319,10 @@ public class Params implements JobParams {
 
     @Override
     public Map<String, Object> getExtras() {
+        if (mExtras == null) {
+            return Collections.emptyMap();
+        }
+
         return Collections.unmodifiableMap(mExtras);
     }
 

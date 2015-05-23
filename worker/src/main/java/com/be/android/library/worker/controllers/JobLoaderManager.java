@@ -23,9 +23,17 @@ public class JobLoaderManager {
 
     private int mLoaderRetentionThreshold = LOADER_RETENTION_THRESHOLD_DEFAULT;
 
-    JobLoaderManager() {
+    public JobLoaderManager() {
         mLoaders = new HashMap<String, SoftReference<JobLoader>>();
         mHeldLoaders = new HashMap<String, JobLoader>(LOADER_RETENTION_THRESHOLD_DEFAULT);
+    }
+
+    public int getLoaderRetentionThreshold() {
+        return mLoaderRetentionThreshold;
+    }
+
+    public void setLoaderRetentionThreshold(int loaderRetentionThreshold) {
+        mLoaderRetentionThreshold = loaderRetentionThreshold;
     }
 
     public JobLoader initLoader(JobEventHandlerInterface eventHandler,
@@ -49,16 +57,16 @@ public class JobLoaderManager {
         return loader;
     }
 
-    private JobLoader createNewLoader(JobEventHandlerInterface eventHandler,
+    protected JobLoader createNewLoader(JobEventHandlerInterface eventHandler,
                                       String loaderAttachTag, JobLoader.JobLoaderCallbacks callbacks) {
 
-        JobLoader loader = new JobLoader(eventHandler, loaderAttachTag, callbacks);
+        JobLoader loader = new JobLoader(getJobManager(), eventHandler, loaderAttachTag, callbacks);
         mLoaders.put(loaderAttachTag, new SoftReference<JobLoader>(loader));
 
         return loader;
     }
 
-    private JobLoader findLoader(String loaderTag) {
+    protected JobLoader findLoader(String loaderTag) {
         if (mHeldLoaders.containsKey(loaderTag)) {
             return mHeldLoaders.get(loaderTag);
         }
@@ -72,7 +80,7 @@ public class JobLoaderManager {
         return null;
     }
 
-    private JobLoader holdLoader(String loaderTag, JobLoader loader) {
+    protected JobLoader holdLoader(String loaderTag, JobLoader loader) {
         if (loader == null) return null;
 
         if (mHeldLoaders.size() >= mLoaderRetentionThreshold) {
@@ -82,5 +90,9 @@ public class JobLoaderManager {
         mHeldLoaders.put(loaderTag, loader);
 
         return loader;
+    }
+
+    protected JobManager getJobManager() {
+        return JobManager.getInstance();
     }
 }

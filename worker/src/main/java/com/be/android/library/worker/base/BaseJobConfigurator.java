@@ -17,6 +17,10 @@ public class BaseJobConfigurator implements JobConfigurator {
                 return;
             }
 
+            if (!mJob.hasId()) {
+                return;
+            }
+
             final JobEvent event = new JobEvent.Builder()
                     .jobStatus(mJob.getStatus())
                     .eventCode(JobEvent.EVENT_CODE_UPDATE)
@@ -43,7 +47,6 @@ public class BaseJobConfigurator implements JobConfigurator {
     };
 
     private ParamsBuilder mParamsBuilder;
-    private Params mParams;
 
     public BaseJobConfigurator(BaseJob job) {
         mJob = job;
@@ -155,11 +158,11 @@ public class BaseJobConfigurator implements JobConfigurator {
     public Params build() {
         checkInitialized();
 
-        mParams = mParamsBuilder.build();
-        mParams.getFlags().addOnFlagSetListener(mOnFlagSetListener);
-        mParams.setJobClassName(mJob.getClass().getName());
+        Params params = mParamsBuilder.build();
+        params.getFlags().addOnFlagSetListener(mOnFlagSetListener);
+        params.setJobClassName(mJob.getClass().getName());
 
-        return mParams;
+        return params;
     }
 
     @Override
@@ -168,13 +171,11 @@ public class BaseJobConfigurator implements JobConfigurator {
             init();
         }
 
-        if (mParams == null) {
-            mParams = mParamsBuilder.build();
-            mParams.getFlags().addOnFlagSetListener(mOnFlagSetListener);
-            mParams.setJobClassName(mJob.getClass().getName());
-        }
+        Params params = mParamsBuilder.build();
+        params.getFlags().addOnFlagSetListener(mOnFlagSetListener);
+        params.setJobClassName(mJob.getClass().getName());
 
-        mJob.setParams(mParams);
+        mJob.setParams(params);
     }
 
     private boolean isInitialized() {

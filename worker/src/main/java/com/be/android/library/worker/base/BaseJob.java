@@ -36,6 +36,7 @@ public abstract class BaseJob extends JobObservable {
     private Lock mPauseLock;
     private ExecutionHandler mExecutionHandler;
     private Params mParams;
+    private JobConfigurator mJobConfigurator;
 
     protected BaseJob() {
         this(new JobEventObservableImpl());
@@ -90,7 +91,11 @@ public abstract class BaseJob extends JobObservable {
     }
 
     public final JobConfigurator setup() {
-        return createConfigurator();
+        if (mJobConfigurator == null) {
+            mJobConfigurator = createConfigurator();
+        }
+
+        return mJobConfigurator;
     }
 
     protected JobConfigurator createConfigurator() {
@@ -316,6 +321,7 @@ public abstract class BaseJob extends JobObservable {
             unpauseAll();
         }
         mParams = null;
+        mJobConfigurator = null;
         mIsCancelled = false;
     }
 
@@ -361,6 +367,7 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public JobEvent execute() {
+        mJobConfigurator = null;
         setStatus(JobStatus.IN_PROGRESS);
 
         if (isCancelled() || Thread.interrupted()) {
