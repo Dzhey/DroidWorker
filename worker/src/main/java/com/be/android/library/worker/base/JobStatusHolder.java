@@ -10,7 +10,7 @@ public class JobStatusHolder {
     private LinkedList<JobStatusLock> mLocks;
     private Lock mLock;
 
-    JobStatusHolder() {
+    public JobStatusHolder() {
         mLocks = new LinkedList<JobStatusLock>();
         mLock = new ReentrantLock(false);
     }
@@ -34,7 +34,7 @@ public class JobStatusHolder {
     public JobStatusLock newLock() {
         mLock.lock();
         try {
-            JobStatusLock lock = new JobStatusLock();
+            JobStatusLock lock = createLock();
             mLocks.add(lock);
 
             return lock;
@@ -42,6 +42,10 @@ public class JobStatusHolder {
         } finally {
             mLock.unlock();
         }
+    }
+
+    protected JobStatusLock createLock() {
+        return new JobStatusLock();
     }
 
     private void awaitStatusLocks() throws InterruptedException {
@@ -58,7 +62,7 @@ public class JobStatusHolder {
                 mLock.unlock();
             }
 
-            lock.getLatch().await();
+            lock.lock();
         }
     }
 }

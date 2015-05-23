@@ -1,5 +1,6 @@
 package com.be.android.library.worker.controllers;
 
+import com.be.android.library.worker.base.JobConfigurator;
 import com.be.android.library.worker.handlers.JobEventHandlerInterface;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.util.JobSelector;
@@ -42,13 +43,23 @@ public class JobLoader {
 
         Job job = JobManager.getInstance().findJob(JobSelector.forJobTags(mAttachTag));
 
-        if (job != null && job.isFinished() == false && job.isCancelled() == false) {
+        if (job != null
+                && job.hasParams()
+                && !job.isFinished()
+                && !job.isCancelled()) {
+
             if (eventHandler.addPendingJob(job.getJobId())) {
                 return job.getJobId();
             }
         }
 
         job = callbacks.onCreateJob(mAttachTag);
+        if (!job.hasParams()) {
+            JobConfigurator configurator = job.setup();
+            configurator.addTag(mAttachTag);
+            configurator.apply();
+        }
+
         if (!job.getParams().hasTag(mAttachTag)) {
             throw new IllegalStateException(
                     String.format("requested job has to have tag '%s'", mAttachTag));

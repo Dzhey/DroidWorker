@@ -1,6 +1,5 @@
 package com.be.android.library.worker.base;
 
-import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.Params;
 
 import java.util.Collection;
@@ -95,53 +94,73 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
     }
 
     @Override
-    public ParamsBuilder group(int groupId) {
-        return mJobConfigurator.group(groupId);
+    public InstrumentationJobConfigurator group(int groupId) {
+        mJobConfigurator.group(groupId);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder priority(int priority) {
-        return mJobConfigurator.priority(priority);
+    public InstrumentationJobConfigurator priority(int priority) {
+        mJobConfigurator.priority(priority);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder payload(Object payload) {
-        return mJobConfigurator.payload(payload);
+    public InstrumentationJobConfigurator payload(Object payload) {
+        mJobConfigurator.payload(payload);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder tags(String... tags) {
-        return mJobConfigurator.tags(tags);
+    public InstrumentationJobConfigurator tags(String... tags) {
+        mJobConfigurator.tags(tags);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder tags(Collection<String> tags) {
-        return mJobConfigurator.tags(tags);
+    public InstrumentationJobConfigurator tags(Collection<String> tags) {
+        mJobConfigurator.tags(tags);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder addTag(String tag) {
-        return mJobConfigurator.addTag(tag);
+    public InstrumentationJobConfigurator addTag(String tag) {
+        mJobConfigurator.addTag(tag);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder removeTag(String tag) {
-        return mJobConfigurator.removeTag(tag);
+    public InstrumentationJobConfigurator removeTag(String tag) {
+        mJobConfigurator.removeTag(tag);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder addExtra(String key, Object value) {
-        return mJobConfigurator.addExtra(key, value);
+    public InstrumentationJobConfigurator addExtra(String key, Object value) {
+        mJobConfigurator.addExtra(key, value);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder removeExtra(String key) {
-        return mJobConfigurator.removeExtra(key);
+    public InstrumentationJobConfigurator removeExtra(String key) {
+        mJobConfigurator.removeExtra(key);
+
+        return this;
     }
 
     @Override
-    public ParamsBuilder flag(String flag, boolean value) {
-        return mJobConfigurator.flag(flag, value);
+    public InstrumentationJobConfigurator flag(String flag, boolean value) {
+        mJobConfigurator.flag(flag, value);
+
+        return this;
     }
 
     @Override

@@ -6,12 +6,12 @@ public class JobStatusLock {
 
     private final CountDownLatch mLatch;
 
-    JobStatusLock() {
+    public JobStatusLock() {
         mLatch = new CountDownLatch(1);
     }
 
-    CountDownLatch getLatch() {
-        return mLatch;
+    public void lock() throws InterruptedException {
+        mLatch.await();
     }
 
     public void release() {

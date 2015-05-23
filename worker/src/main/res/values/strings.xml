@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">worker</string>
+    <string name="worker_name">Core</string>
 </resources>

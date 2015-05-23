@@ -1,11 +1,7 @@
 package com.be.android.library.worker.test;
 
 import com.be.android.library.worker.base.BaseJob;
-import com.be.android.library.worker.base.InstrumentationJobConfigurator;
-import com.be.android.library.worker.base.JobConfigurator;
 import com.be.android.library.worker.base.JobEvent;
-import com.be.android.library.worker.base.JobStatus;
-import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
 import org.junit.After;
@@ -19,12 +15,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.validateMockitoUsage;
-import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.spy;
-import static org.powermock.api.mockito.PowerMockito.verifyPrivate;
 
 /**
  * Verify job pause/unpausecases

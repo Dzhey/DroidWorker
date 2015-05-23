@@ -29,7 +29,7 @@ public abstract class BaseJob extends JobObservable {
 
     private static final JobEvent EVENT_OK = JobEvent.ok();
 
-    private JobStatusHolder mStatusHolder = new JobStatusHolder();
+    private JobStatusHolder mStatusHolder;
     private AtomicInteger mPauseCounter;
     private volatile boolean mIsCancelled;
     private CountDownLatch mPauseLatch;
@@ -137,19 +137,20 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public boolean isPending() {
-        return mStatusHolder.getJobStatus() == JobStatus.PENDING;
+        return getStatus() == JobStatus.PENDING;
     }
 
     @Override
     public boolean isFinished() {
-        return mStatusHolder.getJobStatus() == JobStatus.OK
-                || mStatusHolder.getJobStatus() == JobStatus.FAILED;
+        final JobStatus status = getStatus();
+        return status == JobStatus.OK
+                || status == JobStatus.FAILED;
     }
 
     @Override
     public boolean isFinishedOrCancelled() {
         return mIsCancelled
-                || mStatusHolder.getJobStatus() == JobStatus.CANCELLED
+                || getStatus() == JobStatus.CANCELLED
                 || isFinished();
     }
 
@@ -163,7 +164,7 @@ public abstract class BaseJob extends JobObservable {
     }
 
     protected void setStatus(JobStatus status) {
-        if (mStatusHolder.getJobStatus() == status) return;
+        if (getStatus() == status) return;
 
         setStatusSilent(status);
 
@@ -174,7 +175,8 @@ public abstract class BaseJob extends JobObservable {
     }
 
     protected void setStatusSilent(JobStatus status) {
-        final JobStatus current = mStatusHolder.getJobStatus();
+        final JobStatus current = getStatus();
+
         if (current == status) return;
 
         try {
@@ -191,6 +193,10 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public JobStatus getStatus() {
+        if (mStatusHolder == null) {
+            mStatusHolder = createStatusHolder();
+        }
+
         return mStatusHolder.getJobStatus();
     }
 
@@ -339,6 +345,10 @@ public abstract class BaseJob extends JobObservable {
                 mPauseLock.unlock();
             }
         }
+    }
+
+    protected JobStatusHolder createStatusHolder() {
+        return new JobStatusHolder();
     }
 
     private static boolean checkEventStatusIntegrity(JobEvent event) {
@@ -592,7 +602,11 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public JobStatusLock acquireStatusLock() {
-        return null;
+        if (mStatusHolder == null) {
+            mStatusHolder = createStatusHolder();
+        }
+
+        return mStatusHolder.newLock();
     }
 
     /**
@@ -631,14 +645,14 @@ public abstract class BaseJob extends JobObservable {
             return false;
         if (mPauseLock != null ? !mPauseLock.equals(baseJob.mPauseLock) : baseJob.mPauseLock != null)
             return false;
-        if (mStatusHolder.getJobStatus() != baseJob.mStatusHolder.getJobStatus()) return false;
+        if (getStatus() != baseJob.getStatus()) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = mStatusHolder.getJobStatus().hashCode();
+        int result = getStatus().hashCode();
         result = 31 * result + (mIsCancelled ? 1 : 0);
         result = 31 * result + (mPauseLatch != null ? mPauseLatch.hashCode() : 0);
         result = 31 * result + (mPauseLock != null ? mPauseLock.hashCode() : 0);

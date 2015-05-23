@@ -30,18 +30,6 @@ public class TestJobReset {
 
     @Before
     public void setUp() {
-//        mBaseJob = PowerMockito.spy(new BaseJob() {
-//            @Override
-//            protected JobEvent executeImpl() throws Exception {
-//                return JobEvent.ok();
-//            }
-//
-//            @Override
-//            protected void onReset() {
-//            }
-//        });
-//        mBaseJob.setup().apply();
-//        mBaseJob.getParams().assignJobId(0);
     }
 
     @Test
