@@ -18,6 +18,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ui.base.FragmentContainerActivity" />
+
         <service
             android:name="com.be.android.library.worker.service.ThreadPoolWorkerService"
             android:exported="false"

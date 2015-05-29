@@ -13,7 +13,7 @@ import com.be.android.library.worker.util.JobSelector;
  * Base activity implementation defines common interface
  * to submit jobs and automatically register to job events
  */
-public class BaseActivity extends ActionBarActivity implements JobLoader.JobLoaderCallbacks{
+public class BaseActivity extends ActionBarActivity implements JobLoader.JobLoaderCallbacks {
 
     private JobEventDispatcher mJobEventDispatcher;
 
@@ -25,21 +25,13 @@ public class BaseActivity extends ActionBarActivity implements JobLoader.JobLoad
         mJobEventDispatcher.restoreState(savedInstanceState);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-
+    protected void registerForJobEvents() {
         // Implementations should have at least one job listener to successfully register
-        // You may register from another callback methods, such as onStart()
-        // but usually it's not considered to be best practice
         mJobEventDispatcher.register(this);
     }
 
-    @Override
-    protected void onPause() {
+    protected void unregisterForJobEvents() {
         mJobEventDispatcher.unregister(this);
-
-        super.onPause();
     }
 
     @Override

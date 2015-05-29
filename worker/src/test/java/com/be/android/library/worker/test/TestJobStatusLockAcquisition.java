@@ -51,7 +51,7 @@ public class TestJobStatusLockAcquisition {
             lock.release();
         }
 
-        verify(mJobStatusLock, times(1)).lock();
+        verify(mJobStatusLock, times(1)).await();
         verify(mJobStatusLock, times(1)).release();
     }
 

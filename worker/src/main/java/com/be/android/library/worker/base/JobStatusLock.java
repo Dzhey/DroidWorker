@@ -10,7 +10,7 @@ public class JobStatusLock {
         mLatch = new CountDownLatch(1);
     }
 
-    public void lock() throws InterruptedException {
+    public void await() throws InterruptedException {
         mLatch.await();
     }
 

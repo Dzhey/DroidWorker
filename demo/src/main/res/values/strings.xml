@@ -1,6 +1,14 @@
 <resources>
-    <string name="app_name">DroidWorker</string>
+    <string name="app_name">DroidWorker Demo</string>
 
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+
+    <string name="pause_demo">Job Pause/Resume</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+
+    <array name="demo_list">
+        <item>@string/pause_demo</item>
+    </array>
+
 </resources>

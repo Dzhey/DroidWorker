@@ -278,17 +278,17 @@ public class JobEvent {
         return result;
     }
 
-    JobEvent(int eventCode) {
+    protected JobEvent(int eventCode) {
         mEventCode = eventCode;
     }
 
-    JobEvent(int eventCode, int extraCode, JobStatus status) {
+    protected JobEvent(int eventCode, int extraCode, JobStatus status) {
         mEventCode = eventCode;
         mExtraCode = extraCode;
         mJobStatus = status;
     }
 
-    JobEvent(int eventCode, JobStatus status) {
+    protected JobEvent(int eventCode, JobStatus status) {
         mEventCode = eventCode;
         mJobStatus = status;
     }

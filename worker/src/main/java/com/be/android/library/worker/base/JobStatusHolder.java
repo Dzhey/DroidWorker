@@ -62,7 +62,7 @@ public class JobStatusHolder {
                 mLock.unlock();
             }
 
-            lock.lock();
+            lock.await();
         }
     }
 }

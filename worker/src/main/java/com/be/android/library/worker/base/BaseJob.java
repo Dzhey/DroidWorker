@@ -6,6 +6,7 @@ import com.be.android.library.worker.controllers.JobEventObservableImpl;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.JobEventObservable;
 import com.be.android.library.worker.models.Params;
+import com.be.android.library.worker.models.ProgressUpdateEvent;
 import com.be.android.library.worker.util.JobFutureResult;
 
 import java.util.concurrent.CountDownLatch;
@@ -334,7 +335,7 @@ public abstract class BaseJob extends JobObservable {
         mPauseLatch.await();
     }
 
-    private void performPauseIfPaused() throws InterruptedException {
+    protected void yieldForPause() throws InterruptedException {
         boolean isUnlocked = false;
         try {
             mPauseLock.lock();
@@ -409,7 +410,7 @@ public abstract class BaseJob extends JobObservable {
         try {
             mExecutionHandler.onPreExecute();
 
-            performPauseIfPaused();
+            yieldForPause();
 
             jobEvent = mExecutionHandler.executeImpl();
 
@@ -532,6 +533,23 @@ public abstract class BaseJob extends JobObservable {
         notifyJobEvent(event);
     }
 
+    protected void notifyProgressUpdate(float progress) {
+        if (progress > 1f) {
+            progress = 1f;
+
+        } else if (progress < 0f) {
+            progress = 0f;
+        }
+
+        notifyJobEvent(createProgressUpdateEvent(progress));
+    }
+
+    protected ProgressUpdateEvent createProgressUpdateEvent(float progress) {
+        return new ProgressUpdateEvent(
+                progress,
+                getStatus());
+    }
+
     protected void onCancelled() {
     }
 
@@ -547,7 +565,7 @@ public abstract class BaseJob extends JobObservable {
      * @see #onCheckPreconditions()
      */
     protected void onPreExecute() throws Exception {
-        performPauseIfPaused();
+        yieldForPause();
 
         final JobEvent result = mExecutionHandler.onCheckPreconditions();
 
@@ -599,7 +617,7 @@ public abstract class BaseJob extends JobObservable {
      * @throws Exception
      */
     protected void onPostExecute(JobEvent executionResult) throws Exception {
-        performPauseIfPaused();
+        yieldForPause();
     }
 
     // TODO: add finalization flow

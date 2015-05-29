@@ -1,22 +1,25 @@
 package com.be.android.library.worker.demo;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.TextView;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
-import com.be.android.library.worker.demo.jobs.SimpleLoadResultJob;
-import com.be.android.library.worker.annotations.OnJobFailure;
-import com.be.android.library.worker.annotations.OnJobSuccess;
-import com.be.android.library.worker.interfaces.Job;
-import com.be.android.library.worker.models.LoadJobResult;
+import com.be.android.library.worker.demo.ui.PauseJobDemoFragment;
+import com.be.android.library.worker.demo.ui.base.FragmentContainerActivity;
 
 
 public class MainActivity extends BaseActivity {
 
     private static final String TAG_LOADER_SIMPLE = "MainActivity_loader_simple";
 
-    private TextView mResultTextView;
+    private ListView mListView;
+    private Toolbar mToolbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +27,31 @@ public class MainActivity extends BaseActivity {
 
         setContentView(R.layout.activity_main);
 
-        mResultTextView = (TextView) findViewById(R.id.resultView);
+        mToolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(mToolbar);
+        getSupportActionBar().setTitle(R.string.app_name);
+
+        mListView = (ListView) findViewById(android.R.id.list);
+        mListView.setAdapter(ArrayAdapter.createFromResource(
+                this,
+                R.array.demo_list,
+                android.R.layout.simple_list_item_1
+        ));
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
+                long itemId = mListView.getAdapter().getItemId(pos);
+                handleListItemClick();
+            }
+        });
+    }
+
+    private void handleListItemClick() {
+        Intent launchIntent = FragmentContainerActivity.prepareLaunchIntent(
+                this,
+                PauseJobDemoFragment.class.getName(),
+                null);
+        startActivity(launchIntent);
     }
 
     @Override
@@ -50,7 +77,7 @@ public class MainActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    @OnJobSuccess(SimpleLoadResultJob.class)
+    /*@OnJobSuccess(SimpleLoadResultJob.class)
     public void onLoadSuccess(LoadJobResult<String> result) {
         mResultTextView.setText(result.getData());
     }
@@ -69,5 +96,5 @@ public class MainActivity extends BaseActivity {
             default:
                 throw new IllegalArgumentException("unexpected loader tag: " + tag);
         }
-    }
+    }*/
 }

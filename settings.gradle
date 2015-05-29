@@ -1,1 +1,1 @@
-include ':worker'
+include ':worker', ':demo'

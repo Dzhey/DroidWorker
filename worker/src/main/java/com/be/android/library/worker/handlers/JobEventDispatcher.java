@@ -177,13 +177,8 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     private void flushJobEvents(String cachedListenerTag) {
-        final CachedJobEventListener eventListener = (CachedJobEventListener)
-                JobManager.getInstance().findJobEventListener(cachedListenerTag);
-
-        if (eventListener == null) return;
-
         for (int jobId : mPendingJobs) {
-            final JobEvent event = eventListener.getLastJobEvent(jobId);
+            final JobEvent event = mJobFinishedListener.getLastJobEvent(jobId);
             if (event != null) {
                 mHandler.post(new Runnable() {
                     @Override
@@ -221,6 +216,8 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         ListenerEntry entry = new ListenerEntry(new WeakReference<Object>(listener), registry);
 
         mListeners.add(entry);
+
+        flushJobEvents(mListenerTag);
     }
 
     public void unregister(Object listener) {
@@ -259,7 +256,9 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     private boolean dispatchJobEvent(JobEvent jobEvent) {
-        if (mListeners.isEmpty()) return true;
+        if (mListeners.isEmpty()) {
+            return false;
+        }
 
         boolean isDispatched = false;
         Iterator<ListenerEntry> iter = mListeners.iterator();
