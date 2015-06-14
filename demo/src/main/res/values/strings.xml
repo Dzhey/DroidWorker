@@ -23,6 +23,7 @@
     <string name="multiload_work_demo">Multiple job loaders</string>
     <string name="serial_work_demo">Serial data load demo</string>
     <string name="async_work_demo">Async data load demo</string>
+    <string name="fork_join_example">Reuse loaders demo</string>
 
     <array name="demo_list">
         <item>@string/simple_loader_demo</item>
@@ -30,6 +31,7 @@
         <item>@string/pause_demo</item>
         <item>@string/serial_work_demo</item>
         <item>@string/async_work_demo</item>
+        <item>@string/fork_join_example</item>
     </array>
 
 </resources>

@@ -67,12 +67,6 @@ public class MultiloadExampleAdapter extends BaseAdapter {
         mItems.clear();
         mItems.addAll(items);
 
-        for (Item item : items) {
-            if (!item.mIsLoaded) {
-                mListEntryDataRequestListener.onDataRequested(item.mId);
-            }
-        }
-
         notifyDataSetChanged();
     }
 
@@ -138,6 +132,10 @@ public class MultiloadExampleAdapter extends BaseAdapter {
         } else {
             h.mTextView.setText(String.format("%d. Loading...", item.mId));
             h.mProgressBar.setVisibility(View.VISIBLE);
+
+            if (mListEntryDataRequestListener != null) {
+                mListEntryDataRequestListener.onDataRequested(item.mId);
+            }
         }
 
         return view;

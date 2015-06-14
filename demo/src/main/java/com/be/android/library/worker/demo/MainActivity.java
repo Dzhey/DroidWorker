@@ -8,6 +8,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import com.be.android.library.worker.demo.ui.ForkJoinLoadDemoFragment;
 import com.be.android.library.worker.demo.ui.JobCancelDemoFragment;
 import com.be.android.library.worker.demo.ui.PauseJobDemoFragment;
 import com.be.android.library.worker.demo.ui.MultiloadWorkDemoFragment;
@@ -64,6 +65,9 @@ public class MainActivity extends BaseActivity {
             case 4:
                 fragmentClass = MultiloadWorkDemoFragment.class;
                 fragmentArgs.putBoolean(MultiloadWorkDemoFragment.ARG_ASYNC, true);
+                break;
+            case 5:
+                fragmentClass = ForkJoinLoadDemoFragment.class;
                 break;
 
             default:
