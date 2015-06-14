@@ -1,6 +1,6 @@
 package com.be.android.library.worker.controllers;
 
-import android.util.Log;
+import android.os.Bundle;
 
 import com.be.android.library.worker.base.JobStatusLock;
 import com.be.android.library.worker.handlers.JobEventHandlerInterface;
@@ -14,7 +14,7 @@ public class JobLoader {
     private static final String LOG_TAG = JobLoader.class.getSimpleName();
 
     public interface JobLoaderCallbacks {
-        Job onCreateJob(String attachTag);
+        Job onCreateJob(String attachTag, Bundle data);
     }
 
     private final JobManager mJobManager;
@@ -41,7 +41,7 @@ public class JobLoader {
         mCallbacks = new WeakReference<JobLoaderCallbacks>(callbacks);
     }
 
-    public int requestLoad() {
+    public int requestLoad(Bundle data) {
         final JobEventHandlerInterface eventHandler = mEventHandler.get();
         final JobLoaderCallbacks callbacks = mCallbacks.get();
 
@@ -66,7 +66,7 @@ public class JobLoader {
             }
         }
 
-        job = callbacks.onCreateJob(mAttachTag);
+        job = callbacks.onCreateJob(mAttachTag, data);
         if (job.hasParams()) {
             throw new IllegalArgumentException("job is already set up");
         }
