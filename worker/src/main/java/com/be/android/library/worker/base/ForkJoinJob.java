@@ -123,7 +123,7 @@ public abstract class ForkJoinJob extends BaseJob {
 
         final ForkJoinJob forkJob = forkBuilder.getJob();
         if (!forkJob.hasParams()) {
-            forkJob.setup().build();
+            forkJob.setup().apply();
         }
 
         final int groupId = getParams().getGroupId();
@@ -165,7 +165,7 @@ public abstract class ForkJoinJob extends BaseJob {
                 final JobFutureEvent futureEvent = new JobFutureEvent(forkJob,
                         new JobEventFilter.Builder()
                                 .pendingEventCode(JobEvent.EVENT_CODE_UPDATE)
-                                .pendingExtraCode(JobEvent.EXTRA_CODE_STATUS_CHANGED)
+                                .pendingExtraCode(JobEvent.EXTRA_CODE_FLAG_STATUS_CHANGED)
                                 .pendingFlags(
                                         Flag.create(Params.FLAG_JOB_ENQUEUED, true),
                                         Flag.create(Params.FLAG_JOB_SUBMITTED, true))

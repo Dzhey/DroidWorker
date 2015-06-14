@@ -183,15 +183,11 @@ public class JobEventFilter {
         for (Flag pendingFlag : mPendingFlags) {
             final String name = pendingFlag.getName();
 
-            if (!flags.hasFlag(name)) {
-                return false;
-            }
-
-            if (!flags.checkFlag(name) == pendingFlag.getValue()) {
-                return false;
+            if (flags.checkFlag(name) == pendingFlag.getValue()) {
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 }

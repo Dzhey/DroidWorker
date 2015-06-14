@@ -763,6 +763,8 @@ public class ThreadPoolWorker implements Worker {
             return;
         }
 
+        job.getParams().getFlags().setFlag(JobParams.FLAG_JOB_SUBMITTED, true);
+
         try {
             mExecuteLock.lock();
 
@@ -825,6 +827,8 @@ public class ThreadPoolWorker implements Worker {
             if (queue.size() == sz) {
                 throw new RuntimeException("job comparator collision detected");
             }
+
+            job.getParams().getFlags().setFlag(JobParams.FLAG_JOB_ENQUEUED, true);
 
             logTrace("<job added to job queue", job);
 
