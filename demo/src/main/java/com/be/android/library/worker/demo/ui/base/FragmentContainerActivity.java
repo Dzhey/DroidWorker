@@ -50,7 +50,10 @@ public class FragmentContainerActivity extends BaseActivity implements FragmentC
 
         Fragment fragment = getContentFragment();
         if (fragment == null) {
-            initContentView(mFragmentName, mFragmentArgs);
+            fragment = initContentView(mFragmentName, mFragmentArgs);
+        }
+        if (fragment instanceof TitleProvider) {
+            getSupportActionBar().setTitle(((TitleProvider) fragment).getTitle(getResources()));
         }
     }
 
@@ -84,11 +87,13 @@ public class FragmentContainerActivity extends BaseActivity implements FragmentC
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    protected void initContentView(String fragmentName, Bundle fragmentArgs) {
+    protected Fragment initContentView(String fragmentName, Bundle fragmentArgs) {
         Fragment fragment = Fragment.instantiate(this, fragmentName, fragmentArgs);
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.fragmentContainer, fragment, TAG_CONTENT_FRAGMENT)
                 .commit();
+
+        return fragment;
     }
 
     protected BaseFragment getContentFragment() {

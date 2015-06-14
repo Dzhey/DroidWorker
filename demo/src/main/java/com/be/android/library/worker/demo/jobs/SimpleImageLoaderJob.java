@@ -44,9 +44,4 @@ public class SimpleImageLoaderJob extends LoadJob {
             }
         }
     }
-
-    @Override
-    protected void onPostExecute(JobEvent executionResult) throws Exception {
-        super.onPostExecute(executionResult);
-    }
 }

@@ -2,6 +2,7 @@ package com.be.android.library.worker.demo.ui;
 
 import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Build;
@@ -19,11 +20,12 @@ import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.demo.R;
 import com.be.android.library.worker.demo.jobs.SimpleImageLoaderJob;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
+import com.be.android.library.worker.demo.ui.base.TitleProvider;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.models.LoadJobResult;
 import com.be.android.library.worker.util.JobSelector;
 
-public class SimpleLoadDemoFragment extends BaseFragment {
+public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvider {
 
     private static final String TAG_IMAGE_LOADER = "SimpleLoadDemoFragment_loader";
     private static final String IMG_URL =
@@ -93,5 +95,10 @@ public class SimpleLoadDemoFragment extends BaseFragment {
         JobManager.getInstance().cancelAll(JobSelector.forJobTags(TAG_IMAGE_LOADER));
 
         return super.handleBackPress();
+    }
+
+    @Override
+    public String getTitle(Resources resources) {
+        return resources.getString(R.string.simple_loader_demo);
     }
 }

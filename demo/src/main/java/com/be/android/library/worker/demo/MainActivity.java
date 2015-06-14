@@ -10,6 +10,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import com.be.android.library.worker.demo.ui.JobCancelDemoFragment;
 import com.be.android.library.worker.demo.ui.PauseJobDemoFragment;
 import com.be.android.library.worker.demo.ui.SimpleLoadDemoFragment;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
@@ -54,6 +55,9 @@ public class MainActivity extends BaseActivity {
                 fragmentClass = SimpleLoadDemoFragment.class;
                 break;
             case 1:
+                fragmentClass = JobCancelDemoFragment.class;
+                break;
+            case 2:
                 fragmentClass = PauseJobDemoFragment.class;
                 break;
 
@@ -66,48 +70,4 @@ public class MainActivity extends BaseActivity {
                 null);
         startActivity(launchIntent);
     }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            requestLoad(TAG_LOADER_SIMPLE);
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    /*@OnJobSuccess(SimpleLoadResultJob.class)
-    public void onLoadSuccess(LoadJobResult<String> result) {
-        mResultTextView.setText(result.getData());
-    }
-
-    @OnJobFailure(SimpleLoadResultJob.class)
-    public void onLoadFailure() {
-        mResultTextView.setText("error");
-    }
-
-    @Override
-    public Job onCreateJob(String tag) {
-        switch (tag) {
-            case TAG_LOADER_SIMPLE:
-                return new SimpleLoadResultJob();
-
-            default:
-                throw new IllegalArgumentException("unexpected loader tag: " + tag);
-        }
-    }*/
 }

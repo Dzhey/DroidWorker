@@ -1,5 +1,6 @@
 package com.be.android.library.worker.demo.ui;
 
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -19,6 +20,7 @@ import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.demo.R;
 import com.be.android.library.worker.demo.jobs.PauseDemoJob;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
+import com.be.android.library.worker.demo.ui.base.TitleProvider;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.models.FlagChangeEvent;
 import com.be.android.library.worker.models.JobParams;
@@ -28,7 +30,7 @@ import com.be.android.library.worker.util.JobSelector;
 import java.util.Map;
 
 public class PauseJobDemoFragment extends BaseFragment
-        implements CompoundButton.OnCheckedChangeListener {
+        implements CompoundButton.OnCheckedChangeListener, TitleProvider {
 
     private static final String TAG_LOADER = "PauseJobDemoFragment_Loader";
 
@@ -186,5 +188,10 @@ public class PauseJobDemoFragment extends BaseFragment
         // JobManager.getInstance().cancelAll(JobSelector.forJobTags(TAG_LOADER));
 
         return super.handleBackPress();
+    }
+
+    @Override
+    public String getTitle(Resources resources) {
+        return resources.getString(R.string.pause_demo);
     }
 }

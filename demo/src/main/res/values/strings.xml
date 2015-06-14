@@ -14,9 +14,16 @@
         fragment, activity or from any other component. Finished job will be automatically restarted
         from onViewCreated().
     </string>
+    <string name="action_cancel_job">Cancel job</string>
+    <string name="cancel_demo">Cancelable Job demo</string>
+    <string name="job_cancelled">Cancelled</string>
+    <string name="job_in_progress">Working&#8230;</string>
+    <string name="simple_loader_demo_description">The simplest job implementation uses URLConnection to load image from network</string>
+    <string name="cancel_demo_description">Background work may be easily cancelled</string>
 
     <array name="demo_list">
         <item>@string/simple_loader_demo</item>
+        <item>@string/cancel_demo</item>
         <item>@string/pause_demo</item>
     </array>
 
