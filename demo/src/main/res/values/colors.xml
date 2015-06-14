@@ -7,4 +7,6 @@
     <color name="accentLight">#FF8180</color>
     <color name="accentBright">#FF1744</color>
     <color name="darkGrey">#424242</color>
+    <color name="translucentBlack">#22000000</color>
+    <color name="translucentRed">#33FF0000</color>
 </resources>

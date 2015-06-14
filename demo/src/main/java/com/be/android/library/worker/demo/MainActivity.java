@@ -11,6 +11,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import com.be.android.library.worker.demo.ui.PauseJobDemoFragment;
+import com.be.android.library.worker.demo.ui.SimpleLoadDemoFragment;
+import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.demo.ui.base.FragmentContainerActivity;
 
 
@@ -40,16 +42,27 @@ public class MainActivity extends BaseActivity {
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
-                long itemId = mListView.getAdapter().getItemId(pos);
-                handleListItemClick();
+                handleListItemClick(pos);
             }
         });
     }
 
-    private void handleListItemClick() {
+    private void handleListItemClick(final int pos) {
+        Class<? extends BaseFragment> fragmentClass;
+        switch (pos) {
+            case 0:
+                fragmentClass = SimpleLoadDemoFragment.class;
+                break;
+            case 1:
+                fragmentClass = PauseJobDemoFragment.class;
+                break;
+
+            default:
+                return;
+        }
         Intent launchIntent = FragmentContainerActivity.prepareLaunchIntent(
                 this,
-                PauseJobDemoFragment.class.getName(),
+                fragmentClass.getName(),
                 null);
         startActivity(launchIntent);
     }
