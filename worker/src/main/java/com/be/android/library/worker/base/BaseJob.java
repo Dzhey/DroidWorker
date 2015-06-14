@@ -39,6 +39,7 @@ public abstract class BaseJob extends JobObservable {
     private ExecutionHandler mExecutionHandler;
     private JobParams mParams;
     private JobConfigurator mJobConfigurator;
+    private float mProgress;
 
     protected BaseJob() {
         this(new JobEventObservableImpl());
@@ -122,6 +123,10 @@ public abstract class BaseJob extends JobObservable {
         }
 
         return mParams.getJobId();
+    }
+
+    public float getProgress() {
+        return mProgress;
     }
 
     public JobParams getParams() {
@@ -538,9 +543,11 @@ public abstract class BaseJob extends JobObservable {
         if (progress > 1f) {
             progress = 1f;
 
-        } else if (progress < 0f) {
-            progress = 0f;
+        } else if (progress < mProgress) {
+            progress = mProgress;
         }
+
+        mProgress = progress;
 
         notifyJobEvent(createProgressUpdateEvent(progress));
     }
