@@ -53,7 +53,12 @@ public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvide
 
     @Override
     public Job onCreateJob(String attachTag) {
-        return new SimpleImageLoaderJob(IMG_URL);
+        return new SimpleImageLoaderJob(IMG_URL)
+                .setup()
+                // Use JobManager.JOB_GROUP_UNIQUE to execute job asynchronously
+                // and prevent other jobs from having to wait for completion of this job
+                .group(JobManager.JOB_GROUP_UNIQUE)
+                .getJob();
     }
 
     @OnJobSuccess(SimpleImageLoaderJob.class)

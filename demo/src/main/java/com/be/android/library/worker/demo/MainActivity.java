@@ -3,8 +3,6 @@ package com.be.android.library.worker.demo;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -18,8 +16,6 @@ import com.be.android.library.worker.demo.ui.base.FragmentContainerActivity;
 
 
 public class MainActivity extends BaseActivity {
-
-    private static final String TAG_LOADER_SIMPLE = "MainActivity_loader_simple";
 
     private ListView mListView;
     private Toolbar mToolbar;
