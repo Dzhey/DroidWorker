@@ -109,6 +109,10 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         return addPendingJob(job);
     }
 
+    public boolean removePendingJob(int jobId) {
+        return mPendingJobs.remove(jobId);
+    }
+
     private void addPendingJobImpl(int jobId) {
         if (mPendingJobs.isEmpty()) {
             JobManager.getInstance().addJobEventListener(mListenerTag, mJobFinishedListener);
