@@ -1,6 +1,6 @@
 package com.be.android.library.worker.interfaces;
 
-import com.be.android.library.worker.models.Params;
+import com.be.android.library.worker.models.JobParams;
 
 import java.util.Collection;
 
@@ -25,5 +25,5 @@ public interface ParamsBuilder {
 
     ParamsBuilder flag(String flag, boolean value);
 
-    Params build();
+    JobParams build();
 }

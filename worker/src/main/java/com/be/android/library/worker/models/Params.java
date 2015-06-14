@@ -160,6 +160,7 @@ public class Params implements JobParams {
             return this;
         }
 
+        @Override
         public Params build() {
             checkNotBuilt();
 
@@ -190,6 +191,10 @@ public class Params implements JobParams {
 
     public static Builder create() {
         return new Builder(new Params());
+    }
+
+    public static Builder createFrom(Params params) {
+        return new Builder(params);
     }
 
     @Override
@@ -250,6 +255,7 @@ public class Params implements JobParams {
         mFlags.setFlag(flag, value);
     }
 
+    @Override
     public void setJobClassName(String className) {
         if (mJobClassName != null) {
             throw new IllegalStateException("job class name is already defined");

@@ -3,6 +3,7 @@ package com.be.android.library.worker.base;
 import android.os.SystemClock;
 
 import com.be.android.library.worker.interfaces.JobEventListener;
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
 import java.text.SimpleDateFormat;
@@ -207,12 +208,12 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public Params getParams() {
+    public JobParams getParams() {
         return mWrappedJob.getParams();
     }
 
     @Override
-    public void setParams(Params params) {
+    public void setParams(JobParams params) {
         mWrappedJob.setParams(params);
     }
 

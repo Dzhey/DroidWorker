@@ -33,6 +33,8 @@ public interface JobParams extends FlagsProvider {
 
     String getJobClassName();
 
+    void setJobClassName(String className);
+
     int getGroupId();
 
     int getPriority();

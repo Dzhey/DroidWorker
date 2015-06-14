@@ -5,6 +5,7 @@ import android.util.Log;
 import com.be.android.library.worker.controllers.JobEventObservableImpl;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.JobEventObservable;
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 import com.be.android.library.worker.models.ProgressUpdateEvent;
 import com.be.android.library.worker.util.JobFutureResult;
@@ -36,7 +37,7 @@ public abstract class BaseJob extends JobObservable {
     private CountDownLatch mPauseLatch;
     private Lock mPauseLock;
     private ExecutionHandler mExecutionHandler;
-    private Params mParams;
+    private JobParams mParams;
     private JobConfigurator mJobConfigurator;
 
     protected BaseJob() {
@@ -107,7 +108,7 @@ public abstract class BaseJob extends JobObservable {
         return configurator;
     }
 
-    void setParams(Params params) {
+    void setParams(JobParams params) {
         if (!isPending()) {
             throw new IllegalStateException("Job already submitted");
         }
@@ -123,7 +124,7 @@ public abstract class BaseJob extends JobObservable {
         return mParams.getJobId();
     }
 
-    public Params getParams() {
+    public JobParams getParams() {
         if (!hasParams()) {
             throw new IllegalStateException("no params defined");
         }

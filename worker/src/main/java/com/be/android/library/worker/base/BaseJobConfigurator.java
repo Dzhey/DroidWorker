@@ -2,6 +2,7 @@ package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.Flags;
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
 import java.util.Collection;
@@ -155,10 +156,10 @@ public class BaseJobConfigurator implements JobConfigurator {
     }
 
     @Override
-    public Params build() {
+    public JobParams build() {
         checkInitialized();
 
-        Params params = mParamsBuilder.build();
+        JobParams params = mParamsBuilder.build();
         params.getFlags().addOnFlagSetListener(mOnFlagSetListener);
         params.setJobClassName(mJob.getClass().getName());
 
@@ -171,7 +172,7 @@ public class BaseJobConfigurator implements JobConfigurator {
             init();
         }
 
-        Params params = mParamsBuilder.build();
+        JobParams params = mParamsBuilder.build();
         params.getFlags().addOnFlagSetListener(mOnFlagSetListener);
         params.setJobClassName(mJob.getClass().getName());
 

@@ -7,6 +7,7 @@ import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
+import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.Flag;
 import com.be.android.library.worker.models.Flags;
 import com.be.android.library.worker.models.JobFutureResultStub;
@@ -171,11 +172,7 @@ public abstract class ForkJoinJob extends BaseJob {
                                 .build());
                 forkJob.pause();
 
-                final Params paramsCopy = forkJob.getParams()
-                        .copyWithBuilder()
-                        .flag(JobParams.FLAG_FORCE_EXECUTE, true)
-                        .build();
-                forkJob.setParams(paramsCopy);
+                forkJob.getParams().setFlag(JobParams.FLAG_FORCE_EXECUTE, true);
                 pendingResult = JobManager.getInstance().submitJobForResult(forkJob);
 
                 try {

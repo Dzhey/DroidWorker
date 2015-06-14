@@ -1,5 +1,6 @@
 package com.be.android.library.worker.base;
 
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
 import java.util.Collection;
@@ -164,7 +165,7 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
     }
 
     @Override
-    public Params build() {
+    public JobParams build() {
         return mJobConfigurator.build();
     }
 }
