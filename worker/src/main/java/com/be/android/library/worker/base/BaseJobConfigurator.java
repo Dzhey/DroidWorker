@@ -1,6 +1,8 @@
 package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.interfaces.ParamsBuilder;
+import com.be.android.library.worker.models.Flag;
+import com.be.android.library.worker.models.FlagChangeEvent;
 import com.be.android.library.worker.models.Flags;
 import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
@@ -22,28 +24,7 @@ public class BaseJobConfigurator implements JobConfigurator {
                 return;
             }
 
-            final JobEvent event = new JobEvent.Builder()
-                    .jobStatus(mJob.getStatus())
-                    .eventCode(JobEvent.EVENT_CODE_UPDATE)
-                    .extraCode(JobEvent.EXTRA_CODE_FLAG_STATUS_CHANGED)
-                    .payload(new Map.Entry<String,Boolean>() {
-                        @Override
-                        public String getKey() {
-                            return flag;
-                        }
-
-                        @Override
-                        public Boolean getValue() {
-                            return newValue;
-                        }
-
-                        @Override
-                        public Boolean setValue(Boolean aBoolean) {
-                            throw new UnsupportedOperationException();
-                        }
-                    })
-                    .build();
-            mJob.notifyJobEvent(event);
+            mJob.notifyJobEvent(new FlagChangeEvent(mJob.getStatus(), Flag.create(flag, newValue)));
         }
     };
 
