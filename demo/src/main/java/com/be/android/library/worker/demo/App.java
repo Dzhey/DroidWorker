@@ -8,10 +8,13 @@ import com.be.android.library.worker.controllers.WorkerJobManager;
 public class App extends Application {
 
     private static JobManager sJobManager;
+    private static App sInstance;
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+        sInstance = this;
 
         // From default constructor ThreadPoolWorkerService will be used,
         // so don't forget to add <service> to manifest
@@ -28,5 +31,9 @@ public class App extends Application {
      */
     public static JobManager getJobManager() {
         return sJobManager;
+    }
+
+    public static App getInstance() {
+        return sInstance;
     }
 }

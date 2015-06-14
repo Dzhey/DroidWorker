@@ -2,10 +2,16 @@
     <string name="app_name">DroidWorker Demo</string>
 
     <string name="action_settings">Settings</string>
+    <string name="action_restart">Restart</string>
 
     <string name="pause_demo">Job Pause/Resume</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
+    <string name="pause_demo_description">Job will continue running in background service even if you press
+        'back' and return to this screen. You can pause job and resume it later even from another
+        fragment, activity or from any other component. Finished job will be automatically restarted
+        from onViewCreated().
+    </string>
 
     <array name="demo_list">
         <item>@string/pause_demo</item>

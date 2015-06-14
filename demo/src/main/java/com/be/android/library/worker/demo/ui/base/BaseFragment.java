@@ -11,6 +11,8 @@ import com.be.android.library.worker.handlers.JobEventDispatcher;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.util.JobSelector;
 
+import java.util.List;
+
 public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbacks  {
 
     private JobEventDispatcher mEventDispatcher;
@@ -86,21 +88,42 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
 
         return loader.requestLoad();
     }
+
     protected int requestLoad(String loaderAttachTag) {
         return requestLoad(loaderAttachTag, this);
     }
 
-    protected int requestReload(String loaderAttachTag, JobLoader.JobLoaderCallbacks callbacks) {
-        JobManager.getInstance().cancelAll(JobSelector.forJobTags(loaderAttachTag));
+    protected int requestReload(String loaderAttachTag, JobLoader.JobLoaderCallbacks callbacks, boolean discardCallbacks) {
+        final JobSelector selector = JobSelector.forJobTags(loaderAttachTag);
+        if (discardCallbacks) {
+            List<Job> jobs = JobManager.getInstance().findAll(selector);
+            for (Job job : jobs) {
+                mEventDispatcher.removePendingJob(job.getJobId());
+                job.cancel();
+            }
+        } else {
+            JobManager.getInstance().cancelAll(selector);
+        }
 
         JobLoaderManager mgr = JobLoaderManager.getInstance();
         JobLoader loader = mgr.initLoader(mEventDispatcher, loaderAttachTag, callbacks);
 
-        return loader.requestLoad();
+        final int jobId = loader.requestLoad();
+
+        onReloadRequested(loaderAttachTag, jobId);
+
+        return jobId;
     }
 
     protected int requestReload(String loaderAttachTag) {
-        return requestReload(loaderAttachTag, this);
+        return requestReload(loaderAttachTag, this, false);
+    }
+
+    protected int requestReload(String loaderAttachTag, boolean discardCallbacks) {
+        return requestReload(loaderAttachTag, this, discardCallbacks);
+    }
+
+    protected void onReloadRequested(String loaderAttachTag, int jobId) {
     }
 
     @Override

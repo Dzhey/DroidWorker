@@ -2,6 +2,9 @@ package com.be.android.library.worker.demo.ui;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
@@ -17,6 +20,7 @@ import com.be.android.library.worker.demo.R;
 import com.be.android.library.worker.demo.jobs.PauseDemoJob;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.models.FlagChangeEvent;
 import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.ProgressUpdateEvent;
 import com.be.android.library.worker.util.JobSelector;
@@ -34,6 +38,43 @@ public class PauseJobDemoFragment extends BaseFragment
     private TextView mStatusView;
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+
+        inflater.inflate(R.menu.menu_pause_job_demo, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_restart:
+                requestReload(TAG_LOADER, true);
+                return true;
+
+            default:
+                break;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onReloadRequested(String loaderAttachTag, int jobId) {
+        mStatusView.setText("job is in progress");
+        mProgressBar.setProgress(0);
+        mProgressCountView.setText("0%");
+        mToggleButton.setChecked(false);
+        mToggleButton.setEnabled(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_pause_job_demo, container, false);
 
@@ -47,11 +88,12 @@ public class PauseJobDemoFragment extends BaseFragment
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
-        // We can start job from any lifecycle point
-        // and begin to listen to it's events later using JobEventDispatcher
+        // We can start job from any activity's or fragment's lifecycle point
+        // and begin to listen to it's events using JobEventDispatcher
+        // BaseFragment subscribes to job events from onResume()
         requestLoad(TAG_LOADER);
     }
 
@@ -82,9 +124,20 @@ public class PauseJobDemoFragment extends BaseFragment
     public void onResume() {
         super.onResume();
 
-        // Check if job is paused or is in progress
-        final Job job = JobManager.getInstance().findJob(JobSelector.forJobTags(TAG_LOADER));
-        if (job != null && !job.isFinished()) {
+        final PauseDemoJob job = (PauseDemoJob) JobManager.getInstance().findJob(
+                JobSelector.forJobTags(TAG_LOADER));
+
+        if (job != null) {
+            syncUiToJob(job);
+        }
+
+        mToggleButton.setOnCheckedChangeListener(this);
+    }
+
+    private void syncUiToJob(PauseDemoJob job) {
+        updateProgressBar(job.getProgress());
+
+        if (!job.isFinished()) {
             final boolean isPaused = job.isPaused();
             mToggleButton.setChecked(isPaused);
 
@@ -94,8 +147,12 @@ public class PauseJobDemoFragment extends BaseFragment
                 mStatusView.setText("job paused");
             }
         }
+    }
 
-        mToggleButton.setOnCheckedChangeListener(this);
+    private void updateProgressBar(float progress) {
+        int progressInt = (int) (progress * mProgressBar.getMax());
+        mProgressBar.setProgress(progressInt);
+        mProgressCountView.setText(progressInt + "%");
     }
 
     @OnJobSuccess(PauseDemoJob.class)
@@ -106,33 +163,26 @@ public class PauseJobDemoFragment extends BaseFragment
         mToggleButton.setEnabled(false);
     }
 
-    @OnJobEvent(
-            jobType = PauseDemoJob.class,
-            eventCode = JobEvent.EVENT_CODE_UPDATE)
-    public void onPauseDemoJobUpdateEvent(JobEvent event) {
-        switch (event.getExtraCode()) {
-            case JobEvent.EXTRA_CODE_PROGRESS_UPDATE:
-                int progress = (int) (((ProgressUpdateEvent) event).getProgress() * mProgressBar.getMax());
-                mProgressBar.setProgress(progress);
-                mProgressCountView.setText(progress + "%");
-                break;
+    @OnJobEvent(PauseDemoJob.class)
+    public void onPauseDemoJobProgressUpdate(ProgressUpdateEvent event) {
+        updateProgressBar(event.getProgress());
+    }
 
-            case JobEvent.EXTRA_CODE_FLAG_STATUS_CHANGED:
-                Map.Entry<String, Boolean> flag = (Map.Entry<String, Boolean>) event.getPayload();
-                if (JobParams.FLAG_JOB_PAUSED.equals(flag.getKey())) {
-                    if (flag.getValue()) {
-                        mStatusView.setText("job paused");
-                    } else {
-                        mStatusView.setText("job resumed");
-                    }
-                }
+    @OnJobEvent(PauseDemoJob.class)
+    public void onPauseDemoJobUpdateEvent(FlagChangeEvent event) {
+        if (JobParams.FLAG_JOB_PAUSED.equals(event.getFlag().getName())) {
+            if (event.getFlag().getValue()) {
+                mStatusView.setText("job paused");
+            } else {
+                mStatusView.setText("job resumed");
+            }
         }
     }
 
     @Override
     public boolean handleBackPress() {
-        // Job will continue running after back press without this call
-        // So you can reattach your UI to this job at any time before it finishes
+        // Job will continue running after back is pressed without this call
+        // So you can reattach your UI to this job in any time before it finishes
         // JobManager.getInstance().cancelAll(JobSelector.forJobTags(TAG_LOADER));
 
         return super.handleBackPress();
