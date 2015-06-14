@@ -3,6 +3,7 @@ package com.be.android.library.worker.demo.jobs;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
+import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.jobs.LoadJob;
 import com.be.android.library.worker.models.LoadJobResult;
 
@@ -44,4 +45,8 @@ public class SimpleImageLoaderJob extends LoadJob {
         }
     }
 
+    @Override
+    protected void onPostExecute(JobEvent executionResult) throws Exception {
+        super.onPostExecute(executionResult);
+    }
 }

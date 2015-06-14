@@ -65,6 +65,15 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
             }
 
             @Override
+            public void onJobFinished(JobEvent executionResult) {
+                if (mInstrumentationHandler != null) {
+                    mInstrumentationHandler.onJobFinished(executionResult);
+                }
+
+                mJobExecutionHandler.onJobFinished(executionResult);
+            }
+
+            @Override
             public JobEvent executeImpl() throws Exception {
                 if (mInstrumentationHandler != null) {
                     mInstrumentationHandler.executeImpl();

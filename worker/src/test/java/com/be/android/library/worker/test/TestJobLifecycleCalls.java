@@ -10,9 +10,12 @@ import org.mockito.InOrder;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.refEq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.validateMockitoUsage;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -49,11 +52,12 @@ public class TestJobLifecycleCalls {
         inOrder.verify(mExecutionHandler).onPreExecute();
         inOrder.verify(mExecutionHandler).executeImpl();
         inOrder.verify(mExecutionHandler).onPostExecute(any(JobEvent.class));
+        inOrder.verify(mExecutionHandler).onJobFinished(any(JobEvent.class));
     }
 
     @Test
     public void testFailureLifecycle() throws Exception {
-        Exception expectedException = new RuntimeException("test throw");
+        final Exception expectedException = new RuntimeException("test throw");
         when(mExecutionHandler.executeImpl()).thenThrow(expectedException);
 
         mBaseJob.execute();
@@ -62,6 +66,23 @@ public class TestJobLifecycleCalls {
         inOrder.verify(mExecutionHandler).onPreExecute();
         inOrder.verify(mExecutionHandler).executeImpl();
         inOrder.verify(mExecutionHandler).onExceptionCaught(refEq(expectedException));
+        inOrder.verify(mExecutionHandler).onJobFinished(any(JobEvent.class));
+    }
+
+    @Test
+    public void testPostExecuteFailure() throws Exception {
+        final Exception expectedException = new RuntimeException("test throw");
+        when(mExecutionHandler.executeImpl()).thenReturn(JobEvent.ok());
+        doThrow(expectedException).when(mExecutionHandler).onPostExecute(any(JobEvent.class));
+
+        mBaseJob.execute();
+
+        InOrder inOrder = inOrder(mExecutionHandler);
+        inOrder.verify(mExecutionHandler).onPreExecute();
+        inOrder.verify(mExecutionHandler).executeImpl();
+        inOrder.verify(mExecutionHandler).onPostExecute(any(JobEvent.class));
+        inOrder.verify(mExecutionHandler).onExceptionCaught(refEq(expectedException));
+        inOrder.verify(mExecutionHandler).onJobFinished(any(JobEvent.class));
     }
 
     @After

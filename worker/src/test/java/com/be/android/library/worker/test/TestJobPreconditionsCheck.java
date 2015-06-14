@@ -12,13 +12,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Matchers;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.isA;
+import static org.mockito.Matchers.refEq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.validateMockitoUsage;
 import static org.mockito.Mockito.verify;
@@ -39,10 +43,11 @@ public class TestJobPreconditionsCheck {
 
     @Test
     public void testSuccessPreconditionsCheck() throws Exception {
+        final JobEvent pendingResult = JobEvent.ok();
         final BaseJob job = new BaseJob() {
             @Override
             protected JobEvent executeImpl() throws Exception {
-                return JobEvent.ok();
+                return pendingResult;
             }
 
             @Override
@@ -61,17 +66,23 @@ public class TestJobPreconditionsCheck {
 
         final JobEvent result = job.execute();
 
+        assertSame(pendingResult, result);
+
         verify(mHandler, times(1)).onCheckPreconditions();
+        verify(mHandler, times(1)).onPostExecute(refEq(result));
+        verify(mHandler, never()).onExceptionCaught(Matchers.<Exception>anyObject());
+        verify(mHandler, times(1)).onJobFinished(refEq(pendingResult));
         assertEquals(result.getJobStatus(), JobStatus.OK);
     }
 
     @Test
     public void testFailurePreconditionsCheck() throws Exception {
+        final JobEvent pendingResult = JobEvent.failure();
         final BaseJob job = new BaseJob() {
 
             @Override
             protected JobEvent onCheckPreconditions() {
-                return JobEvent.failure();
+                return pendingResult;
             }
 
             @Override
@@ -96,6 +107,9 @@ public class TestJobPreconditionsCheck {
         final JobEvent result = job.execute();
 
         verify(mHandler, times(1)).onCheckPreconditions();
+        verify(mHandler, times(1)).onExceptionCaught(isA(JobExecutionException.class));
+        verify(mHandler, never()).onPostExecute(Matchers.<JobEvent>anyObject());
+        verify(mHandler, times(1)).onJobFinished(refEq(pendingResult));
         assertEquals(result.getJobStatus(), JobStatus.FAILED);
     }
 

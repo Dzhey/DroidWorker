@@ -24,6 +24,7 @@ public abstract class BaseJob extends JobObservable {
         public JobEvent execute();
         public void onPostExecute(JobEvent executionResult) throws Exception;
         public void onExceptionCaught(Exception e);
+        public void onJobFinished(JobEvent executionResult);
         public JobEvent executeImpl() throws Exception;
     }
 
@@ -76,6 +77,11 @@ public abstract class BaseJob extends JobObservable {
             @Override
             public void onExceptionCaught(Exception e) {
                 BaseJob.this.onExceptionCaughtBase(e);
+            }
+
+            @Override
+            public void onJobFinished(JobEvent executionResult) {
+                BaseJob.this.onJobFinished(executionResult);
             }
 
             @Override
@@ -408,6 +414,12 @@ public abstract class BaseJob extends JobObservable {
 
         notifyJobEvent(result);
 
+        try {
+            mExecutionHandler.onJobFinished(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return result;
     }
 
@@ -584,7 +596,7 @@ public abstract class BaseJob extends JobObservable {
 
     /**
      * This is the place to check job preconditions.
-     * By default method is called from {@link #onPreExecute()}.
+     * Method is called from {@link #onPreExecute()}.
      * <br/>
      * {@link com.be.android.library.worker.exceptions.JobExecutionException}
      * will be thrown from {@link #onPreExecute()} if returned JobEvent specify any job status
@@ -599,6 +611,13 @@ public abstract class BaseJob extends JobObservable {
         return EVENT_OK;
     }
 
+    /**
+     * Called when {@link #execute()} is finished with exception.
+     * <br />
+     * This method wraps {@link #onExceptionCaught(Exception)} to catch further exceptions.
+     *
+     * @param e exception thrown from {@link #executeImpl()} or from {@link #onPostExecute(JobEvent)}
+     */
     protected void onExceptionCaughtBase(Exception e) {
         Log.e(LOG_TAG, String.format("exception caught while executing job '%s'", this));
         e.printStackTrace();
@@ -612,13 +631,21 @@ public abstract class BaseJob extends JobObservable {
         }
     }
 
+    /**
+     * Called when {@link #execute()} is finished with exception.
+     * <br />
+     * Any unexpected exception will be handled in {@link #onExceptionCaughtBase(Exception)}
+     *
+     * @param e exception thrown from {@link #executeImpl()} or from {@link #onPostExecute(JobEvent)}
+     */
     protected void onExceptionCaught(Exception e) {
     }
 
     /**
-     * Called after job has successfully executed.
+     * Called when job has finished it's {@link #execute()} without any exception thrown
      * <br />
-     * If any exception is thrown then job result will change to failure.
+     * If any exception is thrown then job result will change
+     * to failure and {@link #onExceptionCaught(Exception)} will be called.
      *
      * @param executionResult event returned from {@link #executeImpl()}
      *
@@ -628,9 +655,17 @@ public abstract class BaseJob extends JobObservable {
         yieldForPause();
     }
 
-    // TODO: add finalization flow
-    protected void finalizeJob() {
-
+    /**
+     * Called after {@link #onPostExecute(JobEvent)} or {@link #onExceptionCaught(Exception)}.
+     * Before this method is invoked result is already sent to job's listeners.
+     * <br />
+     * It is a good place to release held resources.
+     * <br />
+     * Any thrown exception will be simply consumed and stack trace got printed.
+     *
+     * @param executionResult actual job result
+     */
+    protected void onJobFinished(JobEvent executionResult) {
     }
 
     @Override

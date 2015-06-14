@@ -53,6 +53,11 @@ public class ProfilerJob extends BaseJob {
         }
 
         @Override
+        public void onJobFinished(JobEvent executionResult) {
+            ProfilerJob.this.onJobFinished(executionResult);
+        }
+
+        @Override
         public JobEvent executeImpl() throws Exception {
             return ProfilerJob.this.executeImpl();
         }
