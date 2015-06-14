@@ -49,7 +49,7 @@ public class BaseActivity extends ActionBarActivity implements JobLoader.JobLoad
         JobLoaderManager mgr = JobLoaderManager.getInstance();
         JobLoader loader = mgr.initLoader(mJobEventDispatcher, loaderAttachTag, this);
 
-        return loader.requestLoad();
+        return loader.requestLoad(null);
     }
 
     protected int requestReload(String loaderAttachTag) {
@@ -59,7 +59,7 @@ public class BaseActivity extends ActionBarActivity implements JobLoader.JobLoad
     }
 
     @Override
-    public Job onCreateJob(String attachTag) {
+    public Job onCreateJob(String attachTag, Bundle data) {
         throw new UnsupportedOperationException("should implement onCreateJob");
     }
 

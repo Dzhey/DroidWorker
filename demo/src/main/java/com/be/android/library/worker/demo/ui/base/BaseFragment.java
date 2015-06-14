@@ -17,6 +17,20 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
 
     private JobEventDispatcher mEventDispatcher;
 
+    private final JobLoader.JobLoaderCallbacks mJobLoaderCallbacks =
+            new JobLoader.JobLoaderCallbacks() {
+        @Override
+        public Job onCreateJob(String attachTag, Bundle data) {
+            final Job job = BaseFragment.this.onCreateJob(attachTag, data);
+
+            if (job == null) {
+                return BaseFragment.this.onCreateJob(attachTag);
+            }
+
+            return job;
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -82,18 +96,26 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
         return mEventDispatcher.submitJob(job);
     }
 
-    protected int requestLoad(String loaderAttachTag, JobLoader.JobLoaderCallbacks callbacks) {
+    protected int requestLoad(String loaderAttachTag, JobLoader.JobLoaderCallbacks callbacks, Bundle data) {
         JobLoaderManager mgr = JobLoaderManager.getInstance();
         JobLoader loader = mgr.initLoader(mEventDispatcher, loaderAttachTag, callbacks);
 
-        return loader.requestLoad();
+        return loader.requestLoad(data);
+    }
+
+    protected int requestLoad(String loaderAttachTag, Bundle data) {
+        return requestLoad(loaderAttachTag, mJobLoaderCallbacks, data);
     }
 
     protected int requestLoad(String loaderAttachTag) {
-        return requestLoad(loaderAttachTag, this);
+        return requestLoad(loaderAttachTag, mJobLoaderCallbacks, null);
     }
 
-    protected int requestReload(String loaderAttachTag, JobLoader.JobLoaderCallbacks callbacks, boolean discardCallbacks) {
+    protected int requestReload(String loaderAttachTag,
+                                JobLoader.JobLoaderCallbacks callbacks,
+                                Bundle data,
+                                boolean discardCallbacks) {
+
         final JobSelector selector = JobSelector.forJobTags(loaderAttachTag);
         if (discardCallbacks) {
             List<Job> jobs = JobManager.getInstance().findAll(selector);
@@ -108,26 +130,38 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
         JobLoaderManager mgr = JobLoaderManager.getInstance();
         JobLoader loader = mgr.initLoader(mEventDispatcher, loaderAttachTag, callbacks);
 
-        final int jobId = loader.requestLoad();
+        final int jobId = loader.requestLoad(data);
 
         onReloadRequested(loaderAttachTag, jobId);
 
         return jobId;
     }
 
+    protected int requestReload(String loaderAttachTag, Bundle data) {
+        return requestReload(loaderAttachTag, mJobLoaderCallbacks, data, false);
+    }
+
     protected int requestReload(String loaderAttachTag) {
-        return requestReload(loaderAttachTag, this, false);
+        return requestReload(loaderAttachTag, mJobLoaderCallbacks, null, false);
+    }
+
+    protected int requestReload(String loaderAttachTag, Bundle data, boolean discardCallbacks) {
+        return requestReload(loaderAttachTag, mJobLoaderCallbacks, data, discardCallbacks);
     }
 
     protected int requestReload(String loaderAttachTag, boolean discardCallbacks) {
-        return requestReload(loaderAttachTag, this, discardCallbacks);
+        return requestReload(loaderAttachTag, mJobLoaderCallbacks, null, discardCallbacks);
     }
 
     protected void onReloadRequested(String loaderAttachTag, int jobId) {
     }
 
     @Override
-    public Job onCreateJob(String attachTag) {
+    public Job onCreateJob(String attachTag, Bundle data) {
+        return null;
+    }
+
+    protected Job onCreateJob(String attachTag) {
         throw new UnsupportedOperationException("should implement onCreateJob");
     }
 }

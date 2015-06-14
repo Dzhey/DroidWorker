@@ -20,11 +20,16 @@
     <string name="job_in_progress">Working&#8230;</string>
     <string name="simple_loader_demo_description">The simplest job implementation uses URLConnection to load image from network</string>
     <string name="cancel_demo_description">Background work may be easily cancelled</string>
+    <string name="multiload_work_demo">Multiple job loaders</string>
+    <string name="serial_work_demo">Serial data load demo</string>
+    <string name="async_work_demo">Async data load demo</string>
 
     <array name="demo_list">
         <item>@string/simple_loader_demo</item>
         <item>@string/cancel_demo</item>
         <item>@string/pause_demo</item>
+        <item>@string/serial_work_demo</item>
+        <item>@string/async_work_demo</item>
     </array>
 
 </resources>
