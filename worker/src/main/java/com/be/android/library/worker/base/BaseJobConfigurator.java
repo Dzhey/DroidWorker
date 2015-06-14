@@ -8,7 +8,6 @@ import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
 import java.util.Collection;
-import java.util.Map;
 
 public class BaseJobConfigurator implements JobConfigurator {
 
@@ -148,7 +147,7 @@ public class BaseJobConfigurator implements JobConfigurator {
     }
 
     @Override
-    public void apply() {
+    public BaseJob apply() {
         if (!isInitialized()) {
             init();
         }
@@ -158,6 +157,13 @@ public class BaseJobConfigurator implements JobConfigurator {
         params.setJobClassName(mJob.getClass().getName());
 
         mJob.setParams(params);
+
+        return mJob;
+    }
+
+    @Override
+    public BaseJob getJob() {
+        return mJob;
     }
 
     private boolean isInitialized() {

@@ -1,5 +1,6 @@
 package com.be.android.library.worker.base;
 
+import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
@@ -86,6 +87,7 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
         mJob.setExecutionHandler(mProxyExecutionHandler);
     }
 
+    @Override
     public BaseJob getJob() {
         return mJob;
     }
@@ -99,8 +101,10 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
     }
 
     @Override
-    public void apply() {
+    public BaseJob apply() {
         mJobConfigurator.apply();
+
+        return mJob;
     }
 
     @Override
