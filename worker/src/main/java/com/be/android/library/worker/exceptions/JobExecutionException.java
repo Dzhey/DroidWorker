@@ -28,4 +28,22 @@ public class JobExecutionException extends Exception {
     public JobEvent getJobEvent() {
         return mJobEvent;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        JobExecutionException that = (JobExecutionException) o;
+
+        if (mJobEvent != null ? !mJobEvent.equals(that.mJobEvent) : that.mJobEvent != null)
+            return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return mJobEvent != null ? mJobEvent.hashCode() : 0;
+    }
 }

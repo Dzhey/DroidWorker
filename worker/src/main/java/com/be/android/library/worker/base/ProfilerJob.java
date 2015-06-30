@@ -3,17 +3,17 @@ package com.be.android.library.worker.base;
 import android.os.SystemClock;
 
 import com.be.android.library.worker.interfaces.JobEventListener;
+import com.be.android.library.worker.models.JobParams;
+import com.be.android.library.worker.models.Params;
 
 import java.text.SimpleDateFormat;
-import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 import java.util.concurrent.Future;
 
 public class ProfilerJob extends BaseJob {
 
     private static final SimpleDateFormat TIMESTAMP_FORMAT =
-            new SimpleDateFormat("hh:mm:ss:S");
+            new SimpleDateFormat("hh:mm:ss.S");
 
     private BaseJob mWrappedJob;
     private long mPreExecuteStartTimeMillis;
@@ -26,6 +26,12 @@ public class ProfilerJob extends BaseJob {
     private long mTotalExecuteEndTimeMillis;
 
     private final ExecutionHandler mExecutionHandler = new ExecutionHandler() {
+
+        @Override
+        public JobEvent onCheckPreconditions() throws Exception {
+            return ProfilerJob.this.onCheckPreconditions();
+        }
+
         @Override
         public void onPreExecute() throws Exception {
             ProfilerJob.this.onPreExecute();
@@ -42,8 +48,13 @@ public class ProfilerJob extends BaseJob {
         }
 
         @Override
-        public void onExceptionCaughtBase(Exception e) {
+        public void onExceptionCaught(Exception e) {
             ProfilerJob.this.onExceptionCaughtBase(e);
+        }
+
+        @Override
+        public void onJobFinished(JobEvent executionResult) {
+            ProfilerJob.this.onJobFinished(executionResult);
         }
 
         @Override
@@ -113,7 +124,7 @@ public class ProfilerJob extends BaseJob {
         sb.append(String.format("execute(); %s\n", formatDumpLine(
                 getTotalExecuteStartTimeMillis(), getTotalExecuteEndTimeMillis())));
 
-        sb.append(String.format("onPreExecute(); %s\n", formatDumpLine(
+        sb.append(String.format("onPreExecuteBase(); %s\n", formatDumpLine(
                 getPreExecuteStartTimeMillis(), getPreExecuteEndTimeMillis())));
 
         sb.append(String.format("executeImpl(); %s\n", formatDumpLine(
@@ -131,6 +142,11 @@ public class ProfilerJob extends BaseJob {
                 TIMESTAMP_FORMAT.format(new Date(end)),
                 end - start
         );
+    }
+
+    @Override
+    public JobStatusLock acquireStatusLock() {
+        return mWrappedJob.acquireStatusLock();
     }
 
     @Override
@@ -192,18 +208,23 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public void setPriority(int priority) {
-        mWrappedJob.setPriority(priority);
+    public JobConfigurator createConfigurator() {
+        return mWrappedJob.createConfigurator();
     }
 
     @Override
-    public int getPriority() {
-        return mWrappedJob.getPriority();
+    public JobParams getParams() {
+        return mWrappedJob.getParams();
     }
 
     @Override
-    public boolean isJobIdAssigned() {
-        return mWrappedJob.isJobIdAssigned();
+    public void setParams(JobParams params) {
+        mWrappedJob.setParams(params);
+    }
+
+    @Override
+    public boolean isPending() {
+        return mWrappedJob.isPending();
     }
 
     @Override
@@ -212,23 +233,33 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public void setJobId(int jobId) {
-        mWrappedJob.setJobId(jobId);
+    public boolean isFinishedOrCancelled() {
+        return mWrappedJob.isFinishedOrCancelled();
     }
 
     @Override
-    public int getJobId() {
-        return mWrappedJob.getJobId();
+    public Future<JobEvent> getPendingResult() {
+        return mWrappedJob.getPendingResult();
     }
 
     @Override
-    public void setStatus(JobStatus status) {
-        mWrappedJob.setStatus(status);
+    public int pause() {
+        return mWrappedJob.pause();
     }
 
     @Override
-    public JobStatus getStatus() {
-        return mWrappedJob.getStatus();
+    public int getPauseCount() {
+        return mWrappedJob.getPauseCount();
+    }
+
+    @Override
+    public int unpause() {
+        return mWrappedJob.unpause();
+    }
+
+    @Override
+    public void unpauseAll() {
+        mWrappedJob.unpauseAll();
     }
 
     @Override
@@ -242,78 +273,8 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public void setPayload(Object payload) {
-        mWrappedJob.setPayload(payload);
-    }
-
-    @Override
-    public boolean hasPayload() {
-        return mWrappedJob.hasPayload();
-    }
-
-    @Override
-    public Object getPayload() {
-        return mWrappedJob.getPayload();
-    }
-
-    @Override
-    public void addTag(String tag) {
-        mWrappedJob.addTag(tag);
-    }
-
-    @Override
-    public void addTags(String... tags) {
-        mWrappedJob.addTags(tags);
-    }
-
-    @Override
-    public void addTags(Collection<String> tags) {
-        mWrappedJob.addTags(tags);
-    }
-
-    @Override
-    public List<String> getTags() {
-        return mWrappedJob.getTags();
-    }
-
-    @Override
-    public boolean hasTag(String tag) {
-        return mWrappedJob.hasTag(tag);
-    }
-
-    @Override
-    public boolean hasTags(String... tags) {
-        return mWrappedJob.hasTags(tags);
-    }
-
-    @Override
-    public boolean hasTags(Collection<String> tags) {
-        return mWrappedJob.hasTags(tags);
-    }
-
-    @Override
-    public void setGroupId(int groupId) {
-        mWrappedJob.setGroupId(groupId);
-    }
-
-    @Override
-    public int getGroupId() {
-        return mWrappedJob.getGroupId();
-    }
-
-    @Override
     protected void onReset() {
         mWrappedJob.reset();
-    }
-
-    @Override
-    public Future<JobEvent> getFutureResult() {
-        return mWrappedJob.getFutureResult();
-    }
-
-    @Override
-    public void setPaused(Object pauseToken, boolean isPaused) {
-        mWrappedJob.setPaused(pauseToken, isPaused);
     }
 
     @Override
@@ -322,7 +283,7 @@ public class ProfilerJob extends BaseJob {
     }
 
     @Override
-    public JobEvent call() throws Exception {
+    public JobEvent call() {
         return mWrappedJob.execute();
     }
 
@@ -368,7 +329,6 @@ public class ProfilerJob extends BaseJob {
 
     @Override
     protected void notifyJobEventImpl(JobEvent event) {
-        event.setJob(this);
         super.notifyJobEventImpl(event);
     }
 

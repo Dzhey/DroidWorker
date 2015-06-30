@@ -3,77 +3,62 @@ package com.be.android.library.worker.base;
 import android.util.Log;
 
 import com.be.android.library.worker.controllers.JobEventObservableImpl;
-import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
-import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventObservable;
-import com.be.android.library.worker.models.JobResultStatus;
+import com.be.android.library.worker.models.JobParams;
+import com.be.android.library.worker.models.Params;
+import com.be.android.library.worker.models.ProgressUpdateEvent;
 import com.be.android.library.worker.util.JobFutureResult;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class BaseJob extends JobObservable {
 
-    protected interface ExecutionHandler {
+    public interface ExecutionHandler {
+        public JobEvent onCheckPreconditions() throws Exception;
         public void onPreExecute() throws Exception;
         public JobEvent execute();
         public void onPostExecute(JobEvent executionResult) throws Exception;
-        public void onExceptionCaughtBase(Exception e);
+        public void onExceptionCaught(Exception e);
+        public void onJobFinished(JobEvent executionResult);
         public JobEvent executeImpl() throws Exception;
     }
 
     public static final String LOG_TAG = BaseJob.class.getSimpleName();
 
-    private int mId = JobManager.JOB_ID_UNSPECIFIED;
-    private int mGroupId = JobManager.JOB_GROUP_DEFAULT;
-    private int mPriority;
-    private JobStatus mStatus = JobStatus.PENDING;
-    private Object mPayload;
-    private List<String> mTags;
-    private ReadWriteLock mTagsLock;
-    private boolean mIsCancelled;
-    private volatile boolean mIsFinished;
-    private Set<Object> mPauseTokens;
+    private static final JobEvent EVENT_OK = JobEvent.ok();
+
+    private JobStatusHolder mStatusHolder;
+    private AtomicInteger mPauseCounter;
+    private volatile boolean mIsCancelled;
     private CountDownLatch mPauseLatch;
     private Lock mPauseLock;
     private ExecutionHandler mExecutionHandler;
-    private int mExecutionFlags;
+    private JobParams mParams;
+    private JobConfigurator mJobConfigurator;
+    private float mProgress;
 
     protected BaseJob() {
         this(new JobEventObservableImpl());
     }
 
-    protected BaseJob(String... tags) {
-        this(new JobEventObservableImpl(), tags);
-    }
-
     protected BaseJob(JobEventObservable jobObservableHelper) {
-        this(jobObservableHelper, (String[]) null);
-    }
-
-    protected BaseJob(JobEventObservable jobObservableHelper, String... tags) {
         super(jobObservableHelper);
 
-        mTagsLock = new ReentrantReadWriteLock(false);
         mPauseLock = new ReentrantLock(false);
-
-        if (tags != null && tags.length > 0) {
-            mTags = new ArrayList<String>(Arrays.asList(tags));
-        }
+        mPauseCounter = new AtomicInteger(0);
 
         mExecutionHandler = new ExecutionHandler() {
+
+            @Override
+            public JobEvent onCheckPreconditions() throws Exception {
+                return BaseJob.this.onCheckPreconditions();
+            }
+
             @Override
             public void onPreExecute() throws Exception {
                 BaseJob.this.onPreExecute();
@@ -90,8 +75,13 @@ public abstract class BaseJob extends JobObservable {
             }
 
             @Override
-            public void onExceptionCaughtBase(Exception e) {
+            public void onExceptionCaught(Exception e) {
                 BaseJob.this.onExceptionCaughtBase(e);
+            }
+
+            @Override
+            public void onJobFinished(JobEvent executionResult) {
+                BaseJob.this.onJobFinished(executionResult);
             }
 
             @Override
@@ -105,87 +95,194 @@ public abstract class BaseJob extends JobObservable {
         return mExecutionHandler;
     }
 
-    protected void setExecutionHandler(ExecutionHandler mExecutionHandler) {
-        this.mExecutionHandler = mExecutionHandler;
+    protected void setExecutionHandler(ExecutionHandler executionHandler) {
+        mExecutionHandler = executionHandler;
     }
 
-    @Override
-    public boolean isJobIdAssigned() {
-        return mId != JobManager.JOB_ID_UNSPECIFIED;
-    }
-
-    @Override
-    public void setJobId(int jobId) {
-        if (isJobIdAssigned()) {
-            throw new IllegalStateException("job id is already assigned");
+    public final JobConfigurator setup() {
+        if (mJobConfigurator == null) {
+            mJobConfigurator = createConfigurator();
         }
 
-        mId = jobId;
+        return mJobConfigurator;
     }
 
-    public int getExecutionFlags() {
-        return mExecutionFlags;
+    protected JobConfigurator createConfigurator() {
+        final BaseJobConfigurator configurator = new BaseJobConfigurator(this);
+
+        configurator.init();
+
+        return configurator;
     }
 
-    public void setExecutionFlags(int flags) {
-        mExecutionFlags = flags;
+    void setParams(JobParams params) {
+        if (!isPending()) {
+            throw new IllegalStateException("Job already submitted");
+        }
+
+        mParams = params;
+    }
+
+    public int getJobId() {
+        if (!hasId()) {
+            throw new IllegalStateException("job id is not assigned");
+        }
+
+        return mParams.getJobId();
+    }
+
+    public float getProgress() {
+        return mProgress;
+    }
+
+    public JobParams getParams() {
+        if (!hasParams()) {
+            throw new IllegalStateException("no params defined");
+        }
+
+        return mParams;
+    }
+
+    @Override
+    public boolean hasId() {
+        return mParams != null && mParams.isJobIdAssigned();
+    }
+
+    @Override
+    public boolean hasParams() {
+        return mParams != null;
+    }
+
+    @Override
+    public boolean isPending() {
+        return getStatus() == JobStatus.PENDING;
     }
 
     @Override
     public boolean isFinished() {
-        return mIsFinished;
+        final JobStatus status = getStatus();
+        return status == JobStatus.OK
+                || status == JobStatus.FAILED;
     }
 
     @Override
-    public int getJobId() {
-        return mId;
+    public boolean isFinishedOrCancelled() {
+        return mIsCancelled
+                || getStatus() == JobStatus.CANCELLED
+                || isFinished();
     }
 
     @Override
-    public Future<JobEvent> getFutureResult() {
+    public Future<JobEvent> getPendingResult() {
+        if (isFinished()) {
+            throw new IllegalStateException("job has already finished");
+        }
+
         return new JobFutureResult(this);
     }
 
-    @Override
-    public void setStatus(JobStatus status) {
-        if (mStatus == status) return;
+    protected void setStatus(JobStatus status) {
+        if (getStatus() == status) return;
 
         setStatusSilent(status);
+
         notifyJobEvent(new JobEvent(
                 JobEvent.EVENT_CODE_UPDATE,
                 JobEvent.EXTRA_CODE_STATUS_CHANGED,
-                mStatus));
+                status));
     }
 
     protected void setStatusSilent(JobStatus status) {
-        mStatus = status;
+        final JobStatus current = getStatus();
+
+        if (current == status) return;
+
+        try {
+            mStatusHolder.setJobStatus(status);
+            onStatusChanged(current, status);
+
+        } catch (InterruptedException e) {
+            throw new RuntimeException("interrupted");
+        }
+    }
+
+    protected void onStatusChanged(JobStatus previousStatus, JobStatus status) {
     }
 
     @Override
     public JobStatus getStatus() {
-        return mStatus;
+        if (mStatusHolder == null) {
+            mStatusHolder = createStatusHolder();
+        }
+
+        return mStatusHolder.getJobStatus();
     }
 
     @Override
-    public void setPaused(Object pauseToken, boolean isPaused) {
+    public int pause() {
         mPauseLock.lock();
 
+        checkJobSetUp();
+
         try {
-            if (mPauseTokens == null) {
-                mPauseTokens = new HashSet<Object>(1);
+            final int count = mPauseCounter.incrementAndGet();
+
+            if (count == 1) {
+                mParams.setFlag(Params.FLAG_JOB_PAUSED, true);
             }
 
-            if (isPaused) {
-                mPauseTokens.add(pauseToken);
-            } else {
-                mPauseTokens.remove(pauseToken);
-            }
+            return count;
 
-            if (!isPausedImpl()) {
-                if (mPauseLatch != null && mPauseLatch.getCount() > 0) {
+        } finally {
+            mPauseLock.unlock();
+        }
+    }
+
+    @Override
+    public int unpause() {
+        mPauseLock.lock();
+
+        checkJobSetUp();
+
+        if (!isPausedImpl()) {
+            return 0;
+        }
+
+        try {
+            final int pauseCount = mPauseCounter.decrementAndGet();
+
+            if (pauseCount == 0) {
+                if (mPauseLatch != null) {
                     mPauseLatch.countDown();
                 }
+                mParams.setFlag(Params.FLAG_JOB_PAUSED, false);
             }
+
+            return pauseCount;
+
+        } finally {
+            mPauseLock.unlock();
+        }
+    }
+
+    @Override
+    public int getPauseCount() {
+        return mPauseCounter.get();
+    }
+
+    @Override
+    public void unpauseAll() {
+        mPauseLock.lock();
+
+        checkJobSetUp();
+
+        try {
+            mPauseCounter.set(0);
+
+            if (mPauseLatch != null) {
+                mPauseLatch.countDown();
+            }
+            mParams.setFlag(Params.FLAG_JOB_PAUSED, false);
 
         } finally {
             mPauseLock.unlock();
@@ -205,7 +302,7 @@ public abstract class BaseJob extends JobObservable {
     }
 
     private boolean isPausedImpl() {
-        return mPauseTokens != null && !mPauseTokens.isEmpty();
+        return mPauseCounter.get() > 0;
     }
 
     @Override
@@ -218,164 +315,12 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public boolean isCancelled() {
-        return mIsCancelled || mStatus == JobStatus.CANCELLED;
+        return mIsCancelled || getStatus() == JobStatus.CANCELLED;
     }
 
     @Override
-    public void setPayload(Object payload) {
-        mPayload = payload;
-    }
-
-    @Override
-    public boolean hasPayload() {
-        return mPayload != null;
-    }
-
-    @Override
-    public Object getPayload() {
-        return mPayload;
-    }
-
-    @Override
-    public void addTag(String tag) {
-        final Lock lock = mTagsLock.writeLock();
-
-        lock.lock();
-        try {
-            addTagImpl(tag);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public void addTags(String... tags) {
-        if (tags == null || tags.length == 0) return;
-
-        final Lock lock = mTagsLock.writeLock();
-
-        lock.lock();
-        try {
-            for (String tag : tags) {
-                addTagImpl(tag);
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public void addTags(Collection<String> tags) {
-        if (tags == null || tags.isEmpty()) return;
-
-        final Lock lock = mTagsLock.writeLock();
-
-        lock.lock();
-        try {
-            for (String tag : tags) {
-                addTagImpl(tag);
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public List<String> getTags() {
-        final Lock lock = mTagsLock.readLock();
-
-        lock.lock();
-        try {
-
-            if (mTags == null) {
-                return Collections.emptyList();
-            }
-
-            return Collections.unmodifiableList(mTags);
-
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public boolean hasTag(String tag) {
-        final Lock lock = mTagsLock.readLock();
-
-        lock.lock();
-        try {
-
-            return mTags != null && mTags.contains(tag);
-
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public boolean hasTags(String... tags) {
-        if (tags == null || tags.length == 0) return false;
-
-        final Lock lock = mTagsLock.readLock();
-
-        lock.lock();
-        try {
-
-            if (mTags == null) return false;
-
-            for (String tag : tags) {
-                if (mTags.contains(tag) == false)
-                    return false;
-            }
-
-            return true;
-
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public boolean hasTags(Collection<String> tags) {
-        if (tags == null || tags.isEmpty()) return false;
-
-        final Lock lock = mTagsLock.readLock();
-
-        lock.lock();
-        try {
-
-            if (mTags == null) return false;
-
-            return mTags.containsAll(tags);
-
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @Override
-    public void setGroupId(int groupId) {
-        mGroupId = groupId;
-    }
-
-    @Override
-    public int getGroupId() {
-        return mGroupId;
-    }
-
-    @Override
-    public void setPriority(int priority) {
-        mPriority = priority;
-    }
-
-    @Override
-    public int getPriority() {
-        return mPriority;
-    }
-
-    @Override
-    public final void reset() {
-        if (getStatus() != JobStatus.PENDING && isFinished() == false) {
+    public void reset() {
+        if (getStatus() != JobStatus.PENDING && !isFinished()) {
             throw new IllegalStateException(String.format(
                     "can't reset unfinished job; \"%s\"", this));
         }
@@ -384,16 +329,13 @@ public abstract class BaseJob extends JobObservable {
 
         super.reset();
 
-        mId = JobManager.JOB_ID_UNSPECIFIED;
-        mGroupId = JobManager.JOB_GROUP_DEFAULT;
-        mStatus = JobStatus.PENDING;
-        mIsFinished = false;
-        mPriority = 0;
-        mPayload = null;
-        mTags = null;
+        setStatusSilent(JobStatus.PENDING);
+        if (hasParams()) {
+            unpauseAll();
+        }
+        mParams = null;
+        mJobConfigurator = null;
         mIsCancelled = false;
-        mPauseTokens = null;
-        mPauseLatch = null;
     }
 
     protected void onReset() {
@@ -401,7 +343,11 @@ public abstract class BaseJob extends JobObservable {
                 "One should override onReset() in order to reset job; \"%s\"", this));
     }
 
-    private void performPauseIfPaused() throws InterruptedException {
+    protected void onPerformPause() throws InterruptedException {
+        mPauseLatch.await();
+    }
+
+    protected void yieldForPause() throws InterruptedException {
         boolean isUnlocked = false;
         try {
             mPauseLock.lock();
@@ -410,7 +356,7 @@ public abstract class BaseJob extends JobObservable {
                 mPauseLatch = new CountDownLatch(1);
                 mPauseLock.unlock();
                 isUnlocked = true;
-                mPauseLatch.await();
+                onPerformPause();
             }
 
         } finally {
@@ -418,6 +364,10 @@ public abstract class BaseJob extends JobObservable {
                 mPauseLock.unlock();
             }
         }
+    }
+
+    protected JobStatusHolder createStatusHolder() {
+        return new JobStatusHolder();
     }
 
     private static boolean checkEventStatusIntegrity(JobEvent event) {
@@ -430,11 +380,26 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public JobEvent execute() {
+        mJobConfigurator = null;
         setStatus(JobStatus.IN_PROGRESS);
 
-        JobEvent result = wrappedExecute();
+        if (isCancelled() || Thread.interrupted()) {
+            setStatusSilent(JobStatus.CANCELLED);
+            JobEvent result = new JobEvent(JobEvent.EVENT_CODE_CANCELLED, JobStatus.CANCELLED);
+            notifyJobEvent(result);
 
-        mIsFinished = true;
+            return result;
+        }
+
+        if (!hasParams()) {
+            JobEvent result = JobEvent.failure("job params are not defined");
+            setStatusSilent(JobStatus.FAILED);
+            notifyJobEvent(result);
+
+            return result;
+        }
+
+        JobEvent result = wrappedExecute();
 
         if (isCancelled() || Thread.interrupted()) {
             result = new JobEvent(JobEvent.EVENT_CODE_CANCELLED, JobStatus.CANCELLED);
@@ -449,15 +414,21 @@ public abstract class BaseJob extends JobObservable {
 
         notifyJobEvent(result);
 
+        try {
+            mExecutionHandler.onJobFinished(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return result;
     }
 
     private JobEvent wrappedExecute() {
         JobEvent jobEvent;
         try {
-            performPauseIfPaused();
-
             mExecutionHandler.onPreExecute();
+
+            yieldForPause();
 
             jobEvent = mExecutionHandler.executeImpl();
 
@@ -465,17 +436,24 @@ public abstract class BaseJob extends JobObservable {
                 throw new JobExecutionException("job execution result cannot be null");
             }
 
-            if (jobEvent.isJobIdAssigned()) {
-                throw new JobExecutionException("job execution result may not define job id; " +
-                        "make sure to not return another job's result from this job");
+            if (jobEvent.getJobParams() != null) {
+                throw new JobExecutionException("job execution result may not define job params; " +
+                        "make sure you don't return another job's result from this job");
             }
 
             final int resultCode = jobEvent.getEventCode();
             final JobStatus status = jobEvent.getJobStatus();
 
-            if (status != JobStatus.OK && status != JobStatus.FAILED) {
-                throw new JobExecutionException(String.format("job should result in '%s' or '%s' " +
-                        "status; result status: '%s'", JobStatus.OK, JobStatus.FAILED, status));
+            if (status != JobStatus.OK
+                    && status != JobStatus.FAILED
+                    && status != JobStatus.CANCELLED) {
+
+                throw new JobExecutionException(String.format("job should result in '%s', '%s' or '%s' " +
+                        "status; result status: '%s'",
+                        JobStatus.OK,
+                        JobStatus.FAILED,
+                        JobStatus.CANCELLED,
+                        status));
             }
 
             if (!checkEventStatusIntegrity(jobEvent)) {
@@ -483,10 +461,6 @@ public abstract class BaseJob extends JobObservable {
                         "and status returned; result: %d, status: %s", resultCode, status));
             }
 
-            jobEvent.setJobId(getJobId());
-            jobEvent.setJobGroupId(getGroupId());
-            jobEvent.setJob(this);
-            jobEvent.setJobTags(getTags());
             jobEvent.setJobStatus(status);
 
             mExecutionHandler.onPostExecute(jobEvent);
@@ -501,8 +475,8 @@ public abstract class BaseJob extends JobObservable {
                     final int eventCode = exceptionEvent.getEventCode();
                     final JobStatus status = exceptionEvent.getJobStatus();
 
-                    if (eventCode == JobEvent.EVENT_CODE_OK || status == JobStatus.OK) {
-                        mExecutionHandler.onExceptionCaughtBase(
+                    if (eventCode != JobEvent.EVENT_CODE_FAILED || status != JobStatus.FAILED) {
+                        mExecutionHandler.onExceptionCaught(
                                 new JobExecutionException(
                                         String.format("illegal job result " +
                                                         "code or status obtained from JobExecutionException; result: " +
@@ -513,14 +487,14 @@ public abstract class BaseJob extends JobObservable {
                         );
 
                     } else {
-                        mExecutionHandler.onExceptionCaughtBase(e);
+                        mExecutionHandler.onExceptionCaught(e);
 
                         return exceptionEvent;
                     }
                 }
             }
 
-            mExecutionHandler.onExceptionCaughtBase(e);
+            mExecutionHandler.onExceptionCaught(e);
 
             jobEvent = new JobEvent(JobEvent.EVENT_CODE_FAILED);
             jobEvent.setUncaughtException(e);
@@ -537,18 +511,23 @@ public abstract class BaseJob extends JobObservable {
     }
 
     @Override
-    public JobEvent call() throws Exception {
+    public JobEvent call() {
         return mExecutionHandler.execute();
     }
 
     @Override
     public void notifyJobEvent(JobEvent event) {
-        event.setJobId(mId);
-        event.setJobGroupId(mGroupId);
-        event.setJobTags(mTags);
-        event.setJobStatus(mStatus);
-        event.setJobFinished(mIsFinished);
-        event.setJob(this);
+        if (event.hasParams()) {
+            throw new IllegalArgumentException("specified event already has job params; " +
+                    "make sure you don't return another job's result from this job");
+        }
+
+        if (mParams == null) {
+            throw new IllegalArgumentException("job params are not defined");
+        }
+
+        event.setJobStatus(getStatus());
+        event.setJobParams(mParams);
 
         notifyJobEventImpl(event);
     }
@@ -572,29 +551,75 @@ public abstract class BaseJob extends JobObservable {
         notifyJobEvent(event);
     }
 
+    protected void notifyProgressUpdate(float progress) {
+        if (progress > 1f) {
+            progress = 1f;
+
+        } else if (progress < mProgress) {
+            progress = mProgress;
+        }
+
+        mProgress = progress;
+
+        notifyJobEvent(createProgressUpdateEvent(progress));
+    }
+
+    protected ProgressUpdateEvent createProgressUpdateEvent(float progress) {
+        return new ProgressUpdateEvent(
+                progress,
+                getStatus());
+    }
+
     protected void onCancelled() {
     }
 
+    /**
+     * Called before actual job execution is performed.
+     * <br/>
+     * May throw any exception to prevent job from execution.
+     * If {@link com.be.android.library.worker.exceptions.JobExecutionException} is thrown with
+     * specified {@link com.be.android.library.worker.base.JobEvent} then
+     * specified event will be used as the failure job result.
+     *
+     * @throws Exception
+     * @see #onCheckPreconditions()
+     */
     protected void onPreExecute() throws Exception {
-        performPauseIfPaused();
-    }
+        yieldForPause();
 
-    private void addTagImpl(String tag) {
-        if (tag == null) {
-            throw new IllegalArgumentException("tag == null");
-        }
+        final JobEvent result = mExecutionHandler.onCheckPreconditions();
 
-        if (mTags == null) {
-            mTags = new ArrayList<String>(1);
-        }
-
-        if (mTags.contains(tag) == false) {
-            mTags.add(tag);
+        if (result.getEventCode() != JobEvent.EVENT_CODE_OK) {
+            throw new JobExecutionException(result);
         }
     }
 
+    /**
+     * This is the place to check job preconditions.
+     * Method is called from {@link #onPreExecute()}.
+     * <br/>
+     * {@link com.be.android.library.worker.exceptions.JobExecutionException}
+     * will be thrown from {@link #onPreExecute()} if returned JobEvent specify any job status
+     * different from {@link com.be.android.library.worker.base.JobEvent#EVENT_CODE_OK}.
+     * <br/>
+     * In such case returned event will be used as failure job result.
+     *
+     * @return {@link com.be.android.library.worker.base.JobEvent} with appropriate status code.
+     * @see #onPreExecute()
+     */
+    protected JobEvent onCheckPreconditions() {
+        return EVENT_OK;
+    }
+
+    /**
+     * Called when {@link #execute()} is finished with exception.
+     * <br />
+     * This method wraps {@link #onExceptionCaught(Exception)} to catch further exceptions.
+     *
+     * @param e exception thrown from {@link #executeImpl()} or from {@link #onPostExecute(JobEvent)}
+     */
     protected void onExceptionCaughtBase(Exception e) {
-        Log.e(LOG_TAG, String.format("exception caught while executing job %s", this));
+        Log.e(LOG_TAG, String.format("exception caught while executing job '%s'", this));
         e.printStackTrace();
 
         try {
@@ -606,13 +631,70 @@ public abstract class BaseJob extends JobObservable {
         }
     }
 
+    /**
+     * Called when {@link #execute()} is finished with exception.
+     * <br />
+     * Any unexpected exception will be handled in {@link #onExceptionCaughtBase(Exception)}
+     *
+     * @param e exception thrown from {@link #executeImpl()} or from {@link #onPostExecute(JobEvent)}
+     */
     protected void onExceptionCaught(Exception e) {
     }
 
+    /**
+     * Called when job has finished it's {@link #execute()} without any exception thrown
+     * <br />
+     * If any exception is thrown then job result will change
+     * to failure and {@link #onExceptionCaught(Exception)} will be called.
+     *
+     * @param executionResult event returned from {@link #executeImpl()}
+     *
+     * @throws Exception
+     */
     protected void onPostExecute(JobEvent executionResult) throws Exception {
-        performPauseIfPaused();
+        yieldForPause();
     }
 
+    /**
+     * Called after {@link #onPostExecute(JobEvent)} or {@link #onExceptionCaught(Exception)}.
+     * Before this method is invoked result is already sent to job's listeners.
+     * <br />
+     * It is a good place to release held resources.
+     * <br />
+     * Any thrown exception will be simply consumed and stack trace got printed.
+     *
+     * @param executionResult actual job result
+     */
+    protected void onJobFinished(JobEvent executionResult) {
+    }
+
+    @Override
+    public JobStatusLock acquireStatusLock() {
+        if (mStatusHolder == null) {
+            mStatusHolder = createStatusHolder();
+        }
+
+        return mStatusHolder.newLock();
+    }
+
+    /**
+     * Called after {@link #onPreExecute()}.
+     * <br />
+     * This is the place to implement your actual background job logic.
+     * <br />
+     * if any exception is thrown then job result will change to failure.
+     * Also {@link #onExceptionCaught(Exception)} will be
+     * called with thrown exception before job is finished.
+     * <br />
+     * If method has returned result, then {@link #onPostExecute(JobEvent)}
+     * will be called before job is finished,
+     *
+     * @return result event
+     * @throws Exception
+     * @see #onPreExecute()
+     * @see #onExceptionCaught(Exception)
+     * @see #onPostExecute(JobEvent)
+     */
     protected abstract JobEvent executeImpl() throws Exception;
 
     @Override
@@ -622,40 +704,34 @@ public abstract class BaseJob extends JobObservable {
 
         BaseJob baseJob = (BaseJob) o;
 
-        if (mGroupId != baseJob.mGroupId) return false;
-        if (mId != baseJob.mId) return false;
-        if (mPriority != baseJob.mPriority) return false;
-        if (mPayload != null ? !mPayload.equals(baseJob.mPayload) : baseJob.mPayload != null)
+        if (mIsCancelled != baseJob.mIsCancelled) return false;
+        if (mExecutionHandler != null ? !mExecutionHandler.equals(baseJob.mExecutionHandler) : baseJob.mExecutionHandler != null)
             return false;
-        if (mStatus != baseJob.mStatus) return false;
-        if (mTags != null ? !mTags.equals(baseJob.mTags) : baseJob.mTags != null) return false;
+        if (mParams != null ? !mParams.equals(baseJob.mParams) : baseJob.mParams != null)
+            return false;
+        if (mPauseLatch != null ? !mPauseLatch.equals(baseJob.mPauseLatch) : baseJob.mPauseLatch != null)
+            return false;
+        if (mPauseLock != null ? !mPauseLock.equals(baseJob.mPauseLock) : baseJob.mPauseLock != null)
+            return false;
+        if (getStatus() != baseJob.getStatus()) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = mId;
-        result = 31 * result + mGroupId;
-        result = 31 * result + mPriority;
-        result = 31 * result + mStatus.hashCode();
-        result = 31 * result + (mPayload != null ? mPayload.hashCode() : 0);
-        result = 31 * result + (mTags != null ? mTags.hashCode() : 0);
+        int result = getStatus().hashCode();
+        result = 31 * result + (mIsCancelled ? 1 : 0);
+        result = 31 * result + (mPauseLatch != null ? mPauseLatch.hashCode() : 0);
+        result = 31 * result + (mPauseLock != null ? mPauseLock.hashCode() : 0);
+        result = 31 * result + (mExecutionHandler != null ? mExecutionHandler.hashCode() : 0);
+        result = 31 * result + (mParams != null ? mParams.hashCode() : 0);
         return result;
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "{" +
-                "mId=" + mId +
-                ", mGroupId=" + mGroupId +
-                ", mPriority=" + mPriority +
-                ", mStatus=" + mStatus +
-                ", mTags=" + mTags +
-                ", mIsCancelled=" + mIsCancelled +
-                ", mPayload=" + mPayload +
-                ", mTags=" + mTags +
-                ", isPaused=" + isPaused() +
-                '}';
+    private void checkJobSetUp() {
+        if (!hasParams()) {
+            throw new IllegalStateException("job is not set up");
+        }
     }
 }

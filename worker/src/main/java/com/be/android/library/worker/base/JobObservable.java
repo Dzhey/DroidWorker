@@ -12,7 +12,6 @@ public abstract class JobObservable implements Job, JobEventObservable {
         mObservable = observable;
     }
 
-
     @Override
     public void removeJobEventListeners() {
         mObservable.removeJobEventListeners();

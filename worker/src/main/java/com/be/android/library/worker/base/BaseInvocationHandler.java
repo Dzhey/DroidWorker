@@ -36,7 +36,7 @@ public abstract class BaseInvocationHandler implements InvocationHandler {
             return true;
         }
 
-        return pendingJobType.equals(event.getJob().getClass());
+        return pendingJobType.getName().equals(event.getJobParams().getJobClassName());
     }
 
     protected boolean checkPendingStatus(JobEvent event) {
@@ -82,15 +82,8 @@ public abstract class BaseInvocationHandler implements InvocationHandler {
             return true;
         }
 
-        final List<String> jobTags = event.getJobTags();
+        return event.getJobParams().hasTags(pendingTags);
 
-        for (String pendingTag : pendingTags) {
-            if (jobTags.contains(pendingTag) == false) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     @Override

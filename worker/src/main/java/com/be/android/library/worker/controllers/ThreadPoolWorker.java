@@ -6,19 +6,20 @@ import android.os.Looper;
 import android.util.Log;
 import android.util.SparseArray;
 
+import com.be.android.library.worker.base.JobEvent;
+import com.be.android.library.worker.base.JobStatus;
 import com.be.android.library.worker.base.ProfilerJob;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.interfaces.Worker;
-import com.be.android.library.worker.base.JobEvent;
-import com.be.android.library.worker.base.JobStatus;
+import com.be.android.library.worker.models.JobParams;
 
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
@@ -159,7 +160,7 @@ public class ThreadPoolWorker implements Worker {
      * Once job is executed, corresponding entry is evicted.
      *
      */
-    private final SparseArray<PriorityQueue<Job>> mQueuedJobs;
+    private final SparseArray<TreeSet<Job>> mQueuedJobs;
 
     /**
      * Job group id mapped to each executed job.
@@ -196,11 +197,16 @@ public class ThreadPoolWorker implements Worker {
     private final Lock mTraceLock;
     private final BlockingQueue<Runnable> mCoreExecutorQueue;
 
-    private static final Comparator<Job> mJobPriorityComparator =
+    private final Comparator<Job> mJobPriorityComparator =
             new Comparator<Job>() {
                 @Override
                 public int compare(Job lhs, Job rhs) {
-                    return rhs.getPriority() - lhs.getPriority();
+                    int priorityDelta = rhs.getParams().getPriority() - lhs.getParams().getPriority();
+                    if (priorityDelta == 0) {
+                        return lhs.getJobId() - rhs.getJobId();
+                    }
+
+                    return priorityDelta;
                 }
             };
 
@@ -244,7 +250,7 @@ public class ThreadPoolWorker implements Worker {
         mFreeExecutors = new LinkedList<ExecutorProvider>();
         mAllocatedExecutors = new SparseArray<ExecutorProvider>(1);
         mExclusiveJobExecutors = new SparseArray<ExecutorProvider>(0);
-        mQueuedJobs = new SparseArray<PriorityQueue<Job>>();
+        mQueuedJobs = new SparseArray<TreeSet<Job>>();
         mExecuteLock = new ReentrantLock(false);
         mDispatchLock = new ReentrantLock(false);
         mCoreExecutorQueue = new SynchronousQueue<Runnable>(false);
@@ -491,7 +497,7 @@ public class ThreadPoolWorker implements Worker {
         try {
             int sz = mQueuedJobs.size();
             for (int i = 0; i < sz; i++) {
-                PriorityQueue<Job> queue = mQueuedJobs.valueAt(i);
+                TreeSet<Job> queue = mQueuedJobs.valueAt(i);
                 for (Job job : queue) {
                     if (job.getJobId() == jobId) {
                         return job;
@@ -641,7 +647,7 @@ public class ThreadPoolWorker implements Worker {
             return;
         }
 
-        final int groupId = job.getGroupId();
+        final int groupId = job.getParams().getGroupId();
 
         mDispatchLock.lock();
 
@@ -661,8 +667,7 @@ public class ThreadPoolWorker implements Worker {
 
             if (groupId == JobManager.JOB_GROUP_UNIQUE) {
                 if (getPendingJobCount() >= mMaximumThreadCount) {
-                    if ((job.getExecutionFlags() & Job.EXECUTION_FLAG_FORCE_EXECUTE)
-                            == Job.EXECUTION_FLAG_FORCE_EXECUTE) {
+                    if (job.getParams().checkFlag(JobParams.FLAG_FORCE_EXECUTE)) {
 
                         allocateExclusiveJobExecutor(job.getJobId());
                         executeJob(job);
@@ -683,22 +688,22 @@ public class ThreadPoolWorker implements Worker {
     }
 
     private void handleJobResult(JobEvent jobEvent) {
-        final int jobId = jobEvent.getJobId();
-        final int jobGroupId = jobEvent.getJobGroupId();
+        final int jobId = jobEvent.getJobParams().getJobId();
+        final int jobGroupId = jobEvent.getJobParams().getGroupId();
 
-        final boolean isTraceEnabled = logTrace("+ job finished;", jobEvent.getJob());
+        final Job job = findPendingJobForId(jobId);
+        final boolean isTraceEnabled = logTrace("+ job finished;", job);
 
         if (isStopped()) {
-            logTrace("+ ignored job finish: worker is stopped", jobEvent.getJob());
+            logTrace("+ ignored job finish: worker is stopped", job);
             return;
         }
 
         if (jobGroupId == JobManager.JOB_GROUP_DEDICATED) {
-            logTrace("+ handled dedicated job", jobEvent.getJob());
+            logTrace("+ handled dedicated job", job);
             return;
         }
 
-        final Job job = findPendingJobForId(jobId);
         if (job != null) {
             removePendingJob(job);
             if (isTraceEnabled) {
@@ -707,14 +712,13 @@ public class ThreadPoolWorker implements Worker {
                 }
             }
 
-            if ((job.getExecutionFlags() & Job.EXECUTION_FLAG_FORCE_EXECUTE)
-                    == Job.EXECUTION_FLAG_FORCE_EXECUTE) {
+            if (job.getParams().checkFlag(JobParams.FLAG_FORCE_EXECUTE)) {
                 removeExclusiveJobExecutor(job.getJobId());
             }
 
         } else {
             Log.w(LOG_TAG, String.format("can't find pending job to " +
-                            "remove on finish: job '%s' not found", jobEvent.getJob()));
+                            "remove on finish: job id:'%s' not found", jobId));
         }
 
         // Synchronize with job dispatch to ensure serial job enqueue/deque
@@ -749,7 +753,7 @@ public class ThreadPoolWorker implements Worker {
 
     private void executeJob(Job job) {
         logTrace(">executing job..", job);
-        final int groupId = job.getGroupId();
+        final int groupId = job.getParams().getGroupId();
         addPendingJob(job);
 
         if (mIsStopped.get()) {
@@ -758,6 +762,8 @@ public class ThreadPoolWorker implements Worker {
 
             return;
         }
+
+        job.getParams().getFlags().setFlag(JobParams.FLAG_JOB_SUBMITTED, true);
 
         try {
             mExecuteLock.lock();
@@ -768,8 +774,6 @@ public class ThreadPoolWorker implements Worker {
 
             } else {
                 int index = mAllocatedExecutors.indexOfKey(groupId);
-
-                job.setStatus(JobStatus.SUBMITTED);
 
                 if (index > -1) {
                     logTrace("+ executing job on allocated executor", job);
@@ -807,20 +811,24 @@ public class ThreadPoolWorker implements Worker {
     private void enqueueJob(Job job) {
         logTrace(">enqueue job..", job);
 
-        final int groupId = job.getGroupId();
+        final int groupId = job.getParams().getGroupId();
 
         final Lock lock = mQueuedJobsLock.writeLock();
         lock.lock();
         try {
 
-            PriorityQueue<Job> queue = mQueuedJobs.get(groupId);
+            TreeSet<Job> queue = mQueuedJobs.get(groupId);
             if (queue == null) {
-                queue = new PriorityQueue<Job>(1, mJobPriorityComparator);
+                queue = new TreeSet<Job>(mJobPriorityComparator);
                 mQueuedJobs.put(groupId, queue);
             }
+            final int sz = queue.size();
             queue.add(job);
+            if (queue.size() == sz) {
+                throw new RuntimeException("job comparator collision detected");
+            }
 
-            job.setStatus(JobStatus.ENQUEUED);
+            job.getParams().getFlags().setFlag(JobParams.FLAG_JOB_ENQUEUED, true);
 
             logTrace("<job added to job queue", job);
 
@@ -841,7 +849,7 @@ public class ThreadPoolWorker implements Worker {
     }
 
     private void addPendingJob(Job job) {
-        final int jobGroupId = job.getGroupId();
+        final int jobGroupId = job.getParams().getGroupId();
         if (jobGroupId == JobManager.JOB_GROUP_DEDICATED) {
             return;
         }
@@ -874,7 +882,7 @@ public class ThreadPoolWorker implements Worker {
     }
 
     private void removePendingJob(Job job) {
-        final int jobGroupId = job.getGroupId();
+        final int jobGroupId = job.getParams().getGroupId();
 
         if (jobGroupId == JobManager.JOB_GROUP_UNIQUE) {
             removePendingJobForUniqueGroup(job);
@@ -910,7 +918,7 @@ public class ThreadPoolWorker implements Worker {
     private void removePendingJobForUniqueGroup(Job uniqueGroupJob) {
         logTrace(">remove unique-group pending job", uniqueGroupJob);
 
-        if (uniqueGroupJob.getGroupId() != JobManager.JOB_GROUP_UNIQUE) {
+        if (uniqueGroupJob.getParams().getGroupId() != JobManager.JOB_GROUP_UNIQUE) {
             throw new IllegalArgumentException("job group is not unique job group");
         }
 
@@ -943,11 +951,14 @@ public class ThreadPoolWorker implements Worker {
         try {
             int sz = mQueuedJobs.size();
             for (int i = 0; i < sz; i++) {
-                PriorityQueue<Job> queue = mQueuedJobs.valueAt(i);
+                TreeSet<Job> queue = mQueuedJobs.valueAt(i);
 
                 if (queue.isEmpty()) continue;
 
-                return queue.poll();
+                Job job = queue.first();
+                queue.remove(job);
+
+                return job;
             }
 
             return null;
@@ -961,11 +972,14 @@ public class ThreadPoolWorker implements Worker {
         final Lock lock = mQueuedJobsLock.readLock();
         lock.lock();
         try {
-            PriorityQueue<Job> queue = mQueuedJobs.get(groupId);
+            TreeSet<Job> queue = mQueuedJobs.get(groupId);
 
             if (queue == null || queue.isEmpty()) return null;
 
-            return queue.poll();
+            Job job = queue.first();
+            queue.remove(job);
+
+            return job;
 
         } finally {
             lock.unlock();
@@ -979,7 +993,7 @@ public class ThreadPoolWorker implements Worker {
         if (job.getStatus() != JobStatus.PENDING) {
             throw new IllegalArgumentException("job is already submitted");
         }
-        if (job.isJobIdAssigned() == false) {
+        if (job.hasId() == false) {
             throw new IllegalArgumentException("job has no assigned job id");
         }
     }

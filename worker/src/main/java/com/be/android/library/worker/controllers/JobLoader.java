@@ -1,5 +1,8 @@
 package com.be.android.library.worker.controllers;
 
+import android.os.Bundle;
+
+import com.be.android.library.worker.base.JobStatusLock;
 import com.be.android.library.worker.handlers.JobEventHandlerInterface;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.util.JobSelector;
@@ -8,31 +11,37 @@ import java.lang.ref.WeakReference;
 
 public class JobLoader {
 
+    private static final String LOG_TAG = JobLoader.class.getSimpleName();
+
     public interface JobLoaderCallbacks {
-        Job onCreateJob(String attachTag);
+        Job onCreateJob(String attachTag, Bundle data);
     }
 
+    private final JobManager mJobManager;
     private final String mAttachTag;
     private WeakReference<JobEventHandlerInterface> mEventHandler;
     private WeakReference<JobLoaderCallbacks> mCallbacks;
 
-    protected JobLoader(JobEventHandlerInterface eventHandler,
-                        String attachTag, JobLoaderCallbacks callbacks) {
+    protected JobLoader(JobManager jobManager,
+                        JobEventHandlerInterface eventHandler,
+                        String attachTag,
+                        JobLoaderCallbacks callbacks) {
+        mJobManager = jobManager;
 
-        this.mAttachTag = attachTag;
+        mAttachTag = attachTag;
         setEventHandler(eventHandler);
         setCallbacks(callbacks);
     }
 
-    void setEventHandler(JobEventHandlerInterface eventHandler) {
+    final void setEventHandler(JobEventHandlerInterface eventHandler) {
         mEventHandler = new WeakReference<JobEventHandlerInterface>(eventHandler);
     }
 
-    void setCallbacks(JobLoaderCallbacks callbacks) {
+    final void setCallbacks(JobLoaderCallbacks callbacks) {
         mCallbacks = new WeakReference<JobLoaderCallbacks>(callbacks);
     }
 
-    public int requestLoad() {
+    public int requestLoad(Bundle data) {
         final JobEventHandlerInterface eventHandler = mEventHandler.get();
         final JobLoaderCallbacks callbacks = mCallbacks.get();
 
@@ -40,18 +49,28 @@ public class JobLoader {
             return JobManager.JOB_ID_UNSPECIFIED;
         }
 
-        Job job = JobManager.getInstance().findJob(JobSelector.forJobTags(mAttachTag));
+        Job job = mJobManager.findJob(JobSelector.forJobTags(mAttachTag));
 
-        if (job != null && job.isFinished() == false && job.isCancelled() == false) {
-            if (eventHandler.addPendingJob(job.getJobId())) {
-                return job.getJobId();
+        if (job != null && job.hasParams()) {
+            JobStatusLock lock = job.acquireStatusLock();
+            try {
+
+                if (!job.isFinished() && !job.isCancelled()) {
+                    if (eventHandler.addPendingJob(job.getJobId())) {
+                        return job.getJobId();
+                    }
+                }
+
+            } finally {
+                lock.release();
             }
         }
 
-        job = callbacks.onCreateJob(mAttachTag);
-        if (job.hasTag(mAttachTag) == false) {
-            job.addTag(mAttachTag);
+        job = callbacks.onCreateJob(mAttachTag, data);
+        if (job.hasParams()) {
+            throw new IllegalArgumentException("job is already set up");
         }
+        job.setup().addTag(mAttachTag).apply();
 
         return eventHandler.submitJob(job);
     }

@@ -28,7 +28,7 @@ public class JobFutureResult implements Future<JobEvent> {
                     if (mJobId == JobManager.JOB_ID_UNSPECIFIED
                             && event.getEventCode() == JobEvent.EXTRA_CODE_STATUS_CHANGED) {
 
-                        mJobId = event.getJobId();
+                        mJobId = event.getJobParams().getJobId();
 
                         if (mIsCancelled) {
                             JobManager.getInstance().cancelJob(mJobId);
