@@ -10,17 +10,17 @@ import android.util.Log;
 import com.be.android.library.worker.base.HierarchyViewer;
 import com.be.android.library.worker.base.InvocationHandler;
 import com.be.android.library.worker.base.JobCancelInvocationHandlerProvider;
+import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobEventInvocationHandlerProvider;
 import com.be.android.library.worker.base.JobFailureInvocationHandlerProvider;
 import com.be.android.library.worker.base.JobResultInvocationHandlerProvider;
 import com.be.android.library.worker.base.JobSuccessInvocationHandlerProvider;
 import com.be.android.library.worker.controllers.JobManager;
-import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.util.JobSelector;
 
 import java.lang.ref.WeakReference;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -39,6 +39,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     private final Handler mHandler;
     private final String mListenerTag;
     private final HierarchyViewer mHierarchyViewer;
+    private final JobManager mJobManager;
 
     private final CachedJobEventListener mJobFinishedListener = new CachedJobEventListener() {
 
@@ -59,11 +60,20 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         }
     };
 
-    public JobEventDispatcher(Context context) {
-        this(context, context.getClass().getSimpleName());
+    public JobEventDispatcher(Context context, String listenerName) {
+        this(context, JobManager.getInstance(), listenerName);
     }
 
-    public JobEventDispatcher(Context context, String listenerName) {
+    public JobEventDispatcher(Context context) {
+        this(context, JobManager.getInstance(), context.getClass().getSimpleName());
+    }
+
+    public JobEventDispatcher(Context context, JobManager jobManager) {
+        this(context, jobManager, context.getClass().getSimpleName());
+    }
+
+    public JobEventDispatcher(Context context, JobManager jobManager, String listenerName) {
+        mJobManager = jobManager;
         if (TextUtils.isEmpty(listenerName)) {
             throw new IllegalArgumentException("listenerName may not be empty");
         }
@@ -104,18 +114,29 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
      * or job is already finished
      */
     public boolean addPendingJob(int jobId) {
-        Job job = JobManager.getInstance().findJob(jobId);
+        Job job = mJobManager.findJob(jobId);
 
         return addPendingJob(job);
     }
 
     public boolean removePendingJob(int jobId) {
-        return mPendingJobs.remove(jobId);
+        final boolean removed = mPendingJobs.remove(jobId);
+
+        if (mPendingJobs.isEmpty()) {
+            mJobManager.removeJobEventListener(mJobFinishedListener);
+        }
+
+        return removed;
+    }
+
+    public void removePendingJobs() {
+        mPendingJobs.clear();
+        mJobManager.removeJobEventListener(mJobFinishedListener);
     }
 
     private void addPendingJobImpl(int jobId) {
         if (mPendingJobs.isEmpty()) {
-            JobManager.getInstance().addJobEventListener(mListenerTag, mJobFinishedListener);
+            mJobManager.addJobEventListener(mListenerTag, mJobFinishedListener);
         }
 
         mPendingJobs.add(jobId);
@@ -126,7 +147,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     public boolean isPending(JobSelector selector) {
-        Job job = JobManager.getInstance().findJob(selector);
+        Job job = mJobManager.findJob(selector);
 
         if (job == null) return false;
 
@@ -134,7 +155,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     public boolean isPendingAll(JobSelector selector) {
-        List<Job> jobs = JobManager.getInstance().findAll(selector);
+        List<Job> jobs = mJobManager.findAll(selector);
 
         for (Job job : jobs) {
             if (mPendingJobs.contains(job.getJobId()) == false) {
@@ -145,11 +166,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         return true;
     }
 
-    public void saveState(Bundle outState) {
-        if (outState == null) {
-            throw new IllegalArgumentException("outState is null");
-        }
-
+    public int[] getPendingJobs() {
         int i = 0;
         int[] ids = new int[mPendingJobs.size()];
         for (int jobId : mPendingJobs) {
@@ -157,7 +174,19 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             i++;
         }
 
-        outState.putIntArray(KEY_PENDING_JOBS, ids);
+        return ids;
+    }
+
+    public List<Integer> getPendingJobList() {
+        return new ArrayList<Integer>(mPendingJobs);
+    }
+
+    public void saveState(Bundle outState) {
+        if (outState == null) {
+            throw new IllegalArgumentException("outState is null");
+        }
+
+        outState.putIntArray(KEY_PENDING_JOBS, getPendingJobs());
         outState.putString(KEY_FINISH_LISTENER_TAG, mListenerTag);
     }
 
@@ -195,7 +224,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     public int submitJob(Job job) {
-        int jobId = JobManager.getInstance().submitJob(job);
+        int jobId = mJobManager.submitJob(job);
         addPendingJobImpl(jobId);
 
         return jobId;
@@ -251,7 +280,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
                 mPendingJobs.remove(jobId);
 
                 if (mPendingJobs.isEmpty()) {
-                    JobManager.getInstance().removeJobEventListener(mJobFinishedListener);
+                    mJobManager.removeJobEventListener(mJobFinishedListener);
                 }
             }
 
