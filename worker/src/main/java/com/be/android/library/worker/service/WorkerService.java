@@ -81,7 +81,7 @@ public abstract class WorkerService extends Service {
             return Service.START_NOT_STICKY;
         }
 
-        Job job = JobManager.getInstance().findJob(jobId);
+        Job job = getJobManager().findJob(jobId);
         if (job == null) {
             Log.e(LOG_TAG, String.format("job id '%d' not found", jobId));
             stopSelf(startId);
@@ -130,6 +130,10 @@ public abstract class WorkerService extends Service {
             Log.e(LOG_TAG, String.format("unable to submit job '%s'", job));
             e.printStackTrace();
         }
+    }
+
+    protected JobManager getJobManager() {
+        return JobManager.getInstance();
     }
 
     protected abstract Worker createWorker(Intent launchIntent);
