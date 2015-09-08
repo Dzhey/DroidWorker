@@ -134,7 +134,7 @@ public class Flags implements Parcelable, FlagsProvider {
             throw new IllegalArgumentException("null flag passed");
         }
 
-        return mFlags.containsKey(flag);
+        return mFlags != null && mFlags.containsKey(flag);
     }
 
     @Override
