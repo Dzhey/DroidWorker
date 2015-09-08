@@ -291,6 +291,10 @@ public class Params implements JobParams {
 
     @Override
     public Collection<String> getTags() {
+        if (mJobTags == null) {
+            return Collections.emptySet();
+        }
+
         return Collections.unmodifiableCollection(mJobTags);
     }
 
