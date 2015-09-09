@@ -1,8 +1,12 @@
 package com.be.android.library.worker.models;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.interfaces.ParamsBuilder;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,7 +14,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class Params implements JobParams {
+public class Params implements JobParams, Parcelable {
 
     public static class Builder implements ParamsBuilder {
         private final Params mParams;
@@ -176,6 +180,22 @@ public class Params implements JobParams {
         }
     }
 
+    public static final Creator<Params> CREATOR = new Creator<Params>() {
+        @Override
+        public Params createFromParcel(Parcel in) {
+            final Params params = new Params();
+
+            params.readFromParcel(in);
+
+            return params;
+        }
+
+        @Override
+        public Params[] newArray(int size) {
+            return new Params[size];
+        }
+    };
+
     private int mJobId = JobManager.JOB_ID_UNSPECIFIED;
     private int mGroupId;
     private int mPriority;
@@ -195,6 +215,20 @@ public class Params implements JobParams {
 
     public static Builder createFrom(Params params) {
         return new Builder(params);
+    }
+
+    public static Params createFrom(JobParams params) {
+        Params p = new Params();
+        p.mJobId = params.getJobId();
+        p.mGroupId = params.getGroupId();
+        p.mPriority = params.getPriority();
+        p.mJobClassName = params.getJobClassName();
+        p.mPayload = params.getPayload();
+        p.mJobTags = new HashSet<String>(params.getTags());
+        p.mExtras = new HashMap<String, Object>(params.getExtras());
+        p.mFlags = params.getFlags().copy();
+
+        return p;
     }
 
     @Override
@@ -367,6 +401,12 @@ public class Params implements JobParams {
         return new HashMap<String, Object>(mExtras);
     }
 
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -412,5 +452,55 @@ public class Params implements JobParams {
                 ", mJobTags=" + mJobTags +
                 ", mExtras=" + mExtras +
                 '}';
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(mJobId);
+        dest.writeInt(mGroupId);
+        dest.writeString(mJobClassName);
+        final int tagsCount = mJobTags == null ? 0 : mJobTags.size();
+        dest.writeInt(tagsCount);
+        if (tagsCount > 0) {
+            final String[] tags = mJobTags.toArray(new String[tagsCount]);
+            dest.writeStringArray(tags);
+        }
+        final int extrasCount = mExtras != null ? mExtras.size() : 0;
+        dest.writeInt(extrasCount);
+        if (extrasCount > 0) {
+            final String[] extrasNames = new String[mExtras.size()];
+            final Parcelable[] extras = new Parcelable[mExtras.size()];
+            int i = 0;
+            for (Map.Entry<String,Object> entry : mExtras.entrySet()) {
+                extrasNames[i] = entry.getKey();
+                extras[i] = (Parcelable) entry.getValue();
+            }
+            dest.writeStringArray(extrasNames);
+            dest.writeParcelableArray(extras, 0);
+        }
+        dest.writeParcelable(mFlags, 0);
+    }
+
+    protected void readFromParcel(Parcel src) {
+        mJobId = src.readInt();
+        mGroupId = src.readInt();
+        mJobClassName = src.readString();
+        final int tagsCount = src.readInt();
+        if (tagsCount > 0) {
+            final String[] tags = new String[tagsCount];
+            src.readStringArray(tags);
+            mJobTags = new HashSet<String>(Arrays.asList(tags));
+        }
+        final int extrasCount = src.readInt();
+        if (extrasCount > 0) {
+            final String[] extrasNames = new String[extrasCount];
+            src.readStringArray(extrasNames);
+            final Parcelable[] extras = src.readParcelableArray(Params.class.getClassLoader());
+            mExtras = new HashMap<String, Object>();
+            for (int i = 0; i < extrasCount; i++) {
+                mExtras.put(extrasNames[i], extras[i]);
+            }
+        }
+        mFlags = src.readParcelable(Params.class.getClassLoader());
     }
 }
