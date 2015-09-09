@@ -166,6 +166,15 @@ public class Params implements JobParams, Parcelable {
         }
 
         @Override
+        public Builder flag(String flag) {
+            checkNotBuilt();
+
+            mParams.setFlag(flag, true);
+
+            return this;
+        }
+
+        @Override
         public Builder jobClass(Class<? extends Job> jobClazz) {
             checkNotBuilt();
 

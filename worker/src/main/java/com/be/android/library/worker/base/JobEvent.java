@@ -1,10 +1,12 @@
 package com.be.android.library.worker.base;
 
+import com.be.android.library.worker.interfaces.FlagsProvider;
+import com.be.android.library.worker.models.Flags;
 import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.JobResultStatus;
 import com.be.android.library.worker.util.EventCreator;
 
-public class JobEvent {
+public class JobEvent implements FlagsProvider {
 
     public static class Builder {
 
@@ -97,6 +99,22 @@ public class JobEvent {
             return this;
         }
 
+        public Builder flag(String flag, boolean value) {
+            throwIfBuilt();
+
+            mEvent.setFlag(flag, value);
+
+            return this;
+        }
+
+        public Builder flag(String flag) {
+            throwIfBuilt();
+
+            mEvent.setFlag(flag, true);
+
+            return this;
+        }
+
         public JobEvent build() {
             throwIfBuilt();
 
@@ -179,6 +197,20 @@ public class JobEvent {
         }
 
         @Override
+        public Builder flag(String flag, boolean value) {
+            super.flag(flag, value);
+
+            return this;
+        }
+
+        @Override
+        public Builder flag(String flag) {
+            super.flag(flag);
+
+            return this;
+        }
+
+        @Override
         public T build() {
             return (T) getEvent();
         }
@@ -198,6 +230,7 @@ public class JobEvent {
 
     private int mEventCode = EVENT_CODE_UNSPECIFIED;
     private int mExtraCode = EXTRA_CODE_UNSPECIFIED;
+    private Flags mFlags = new Flags();
     private JobStatus mJobStatus;
     private Exception mUncaughtException;
     private String mExtraMessage;
@@ -402,6 +435,36 @@ public class JobEvent {
     protected void setPayload(Object payload) {
         mPayload = payload;
     }
+
+    public Flags getFlags() {
+        return mFlags;
+    }
+
+    @Override
+    public boolean checkFlag(String flag) {
+        return mFlags.checkFlag(flag);
+    }
+
+    @Override
+    public boolean hasFlag(String flag) {
+        return mFlags.hasFlag(flag);
+    }
+
+    @Override
+    public void setFlag(String flag, boolean value) {
+        mFlags.setFlag(flag, value);
+    }
+
+    @Override
+    public void setFlag(String flag) {
+        mFlags.setFlag(flag);
+    }
+
+    @Override
+    public void removeFlag(String flag) {
+        mFlags.removeFlag(flag);
+    }
+
 
     @Override
     public boolean equals(Object o) {

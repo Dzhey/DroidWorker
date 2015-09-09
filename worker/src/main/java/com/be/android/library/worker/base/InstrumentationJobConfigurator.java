@@ -178,6 +178,13 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
     }
 
     @Override
+    public ParamsBuilder flag(String flag) {
+        mJobConfigurator.flag(flag);
+
+        return this;
+    }
+
+    @Override
     public ParamsBuilder jobClass(Class<? extends Job> jobClazz) {
         mJobConfigurator.jobClass(jobClazz);
 
