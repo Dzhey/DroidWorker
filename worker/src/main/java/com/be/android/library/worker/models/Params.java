@@ -4,6 +4,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import com.be.android.library.worker.controllers.JobManager;
+import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.ParamsBuilder;
 
 import java.util.Arrays;
@@ -165,6 +166,15 @@ public class Params implements JobParams, Parcelable {
         }
 
         @Override
+        public Builder jobClass(Class<? extends Job> jobClazz) {
+            checkNotBuilt();
+
+            addExtra(JobParams.EXTRA_JOB_TYPE, jobClazz.getName());
+
+            return this;
+        }
+
+        @Override
         public Params build() {
             checkNotBuilt();
 
@@ -199,7 +209,6 @@ public class Params implements JobParams, Parcelable {
     private int mJobId = JobManager.JOB_ID_UNSPECIFIED;
     private int mGroupId;
     private int mPriority;
-    private String mJobClassName;
     private Object mPayload;
     private Set<String> mJobTags;
     private Map<String, Object> mExtras;
@@ -222,7 +231,6 @@ public class Params implements JobParams, Parcelable {
         p.mJobId = params.getJobId();
         p.mGroupId = params.getGroupId();
         p.mPriority = params.getPriority();
-        p.mJobClassName = params.getJobClassName();
         p.mPayload = params.getPayload();
         p.mJobTags = new HashSet<String>(params.getTags());
         p.mExtras = new HashMap<String, Object>(params.getExtras());
@@ -237,7 +245,6 @@ public class Params implements JobParams, Parcelable {
         p.mJobId = mJobId;
         p.mGroupId = mGroupId;
         p.mPriority = mPriority;
-        p.mJobClassName = mJobClassName;
         p.mPayload = copyPayload();
         p.mJobTags = new HashSet<String>(mJobTags);
         p.mExtras = copyExtras();
@@ -290,17 +297,8 @@ public class Params implements JobParams, Parcelable {
     }
 
     @Override
-    public void setJobClassName(String className) {
-        if (mJobClassName != null) {
-            throw new IllegalStateException("job class name is already defined");
-        }
-
-        mJobClassName = className;
-    }
-
-    @Override
     public String getJobClassName() {
-        return mJobClassName;
+        return (String) getExtra(JobParams.EXTRA_JOB_TYPE);
     }
 
     @Override
@@ -419,8 +417,6 @@ public class Params implements JobParams, Parcelable {
         if (mPriority != params.mPriority) return false;
         if (mExtras != null ? !mExtras.equals(params.mExtras) : params.mExtras != null)
             return false;
-        if (mJobClassName != null ? !mJobClassName.equals(params.mJobClassName) : params.mJobClassName != null)
-            return false;
         if (mJobTags != null ? !mJobTags.equals(params.mJobTags) : params.mJobTags != null)
             return false;
         if (mPayload != null ? !mPayload.equals(params.mPayload) : params.mPayload != null)
@@ -434,7 +430,6 @@ public class Params implements JobParams, Parcelable {
         int result = mJobId;
         result = 31 * result + mGroupId;
         result = 31 * result + mPriority;
-        result = 31 * result + (mJobClassName != null ? mJobClassName.hashCode() : 0);
         result = 31 * result + (mPayload != null ? mPayload.hashCode() : 0);
         result = 31 * result + (mJobTags != null ? mJobTags.hashCode() : 0);
         result = 31 * result + (mExtras != null ? mExtras.hashCode() : 0);
@@ -447,7 +442,7 @@ public class Params implements JobParams, Parcelable {
                 "mJobId=" + mJobId +
                 ", mGroupId=" + mGroupId +
                 ", mPriority=" + mPriority +
-                ", mJobClassName='" + mJobClassName + '\'' +
+                ", mJobClassName='" + getJobClassName() +
                 ", mPayload=" + mPayload +
                 ", mJobTags=" + mJobTags +
                 ", mExtras=" + mExtras +
@@ -458,7 +453,6 @@ public class Params implements JobParams, Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(mJobId);
         dest.writeInt(mGroupId);
-        dest.writeString(mJobClassName);
         final int tagsCount = mJobTags == null ? 0 : mJobTags.size();
         dest.writeInt(tagsCount);
         if (tagsCount > 0) {
@@ -484,7 +478,6 @@ public class Params implements JobParams, Parcelable {
     protected void readFromParcel(Parcel src) {
         mJobId = src.readInt();
         mGroupId = src.readInt();
-        mJobClassName = src.readString();
         final int tagsCount = src.readInt();
         if (tagsCount > 0) {
             final String[] tags = new String[tagsCount];

@@ -25,5 +25,14 @@ public interface ParamsBuilder {
 
     ParamsBuilder flag(String flag, boolean value);
 
+    /**
+     * Set job class name
+     * <be />
+     * Similar to addExtra({@link JobParams#EXTRA_JOB_TYPE, jobClazz.getName()}
+     * @param jobClazz Job class
+     * @return this object
+     */
+    ParamsBuilder jobClass(Class<? extends Job> jobClazz);
+
     JobParams build();
 }

@@ -1,5 +1,6 @@
 package com.be.android.library.worker.base;
 
+import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.Flag;
 import com.be.android.library.worker.models.FlagChangeEvent;
@@ -136,6 +137,15 @@ public class BaseJobConfigurator implements JobConfigurator {
     }
 
     @Override
+    public JobConfigurator jobClass(Class<? extends Job> jobClazz) {
+        checkInitialized();
+
+        mParamsBuilder.jobClass(jobClazz);
+
+        return this;
+    }
+
+    @Override
     public JobConfigurator params(JobParams params) {
         checkInitialized();
 
@@ -148,9 +158,9 @@ public class BaseJobConfigurator implements JobConfigurator {
     public JobParams build() {
         checkInitialized();
 
+        mParamsBuilder.jobClass(mJob.getClass());
         JobParams params = mParamsBuilder.build();
         params.getFlags().addOnFlagSetListener(mOnFlagSetListener);
-        params.setJobClassName(mJob.getClass().getName());
 
         return params;
     }
@@ -161,9 +171,9 @@ public class BaseJobConfigurator implements JobConfigurator {
             init();
         }
 
+        mParamsBuilder.jobClass(mJob.getClass());
         JobParams params = mParamsBuilder.build();
         params.getFlags().addOnFlagSetListener(mOnFlagSetListener);
-        params.setJobClassName(mJob.getClass().getName());
 
         mJob.setParams(params);
 
