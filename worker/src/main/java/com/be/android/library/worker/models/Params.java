@@ -139,7 +139,7 @@ public class Params implements JobParams {
         }
 
         @Override
-        public ParamsBuilder removeExtra(String key) {
+        public Builder removeExtra(String key) {
             checkNotBuilt();
 
             if (mParams.mExtras == null) {
@@ -152,7 +152,7 @@ public class Params implements JobParams {
         }
 
         @Override
-        public ParamsBuilder flag(String flag, boolean value) {
+        public Builder flag(String flag, boolean value) {
             checkNotBuilt();
 
             mParams.setFlag(flag, value);
