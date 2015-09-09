@@ -17,6 +17,7 @@ import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.demo.ui.base.TitleProvider;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.models.LoadJobResult;
+import com.be.android.library.worker.util.JobSelector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,16 @@ public class MultiloadWorkDemoFragment extends BaseFragment implements TitleProv
         initListAdapter();
 
         return view;
+    }
+
+    @Override
+    public void onDestroyView() {
+        // Cancel created jobs as it's result no longer needed
+        // By the way: no results will be received by this fragment after onPause()
+        // even without this call
+        JobManager.getInstance().cancelAll(JobSelector.forJobTags(TAG_LOADER));
+
+        super.onDestroyView();
     }
 
     private void initListAdapter() {
@@ -82,6 +93,9 @@ public class MultiloadWorkDemoFragment extends BaseFragment implements TitleProv
         return new LoadListEntryJob(data.getInt(KEY_LIST_ENTRY_ID))
                 .setup()
                 .group(isAsync() ? JobManager.JOB_GROUP_UNIQUE : JobManager.JOB_GROUP_DEFAULT)
+                // 'TAG_LOADER' used to identify jobs created here
+                // 'attachTag' will be added to created job automatically
+                .addTag(TAG_LOADER)
                 .getJob();
     }
 

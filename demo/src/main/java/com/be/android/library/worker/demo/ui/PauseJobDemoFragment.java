@@ -184,7 +184,7 @@ public class PauseJobDemoFragment extends BaseFragment
     @Override
     public boolean handleBackPress() {
         // Job will continue running when back is pressed without this call
-        // So you can reattach your UI to this job in any time before it finishes
+        // So you can reattach your UI to this job at any time before it finishes
         // JobManager.getInstance().cancelAll(JobSelector.forJobTags(TAG_LOADER));
 
         return super.handleBackPress();
