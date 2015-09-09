@@ -297,6 +297,16 @@ public class Params implements JobParams, Parcelable {
     }
 
     @Override
+    public void setFlag(String flag) {
+        mFlags.setFlag(flag);
+    }
+
+    @Override
+    public void removeFlag(String flag) {
+        mFlags.removeFlag(flag);
+    }
+
+    @Override
     public String getJobClassName() {
         return (String) getExtra(JobParams.EXTRA_JOB_TYPE);
     }

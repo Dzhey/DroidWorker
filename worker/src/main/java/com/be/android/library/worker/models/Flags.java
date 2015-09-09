@@ -129,6 +129,24 @@ public class Flags implements Parcelable, FlagsProvider {
     }
 
     @Override
+    public void setFlag(String flag) {
+        setFlag(flag, true);
+    }
+
+    @Override
+    public void removeFlag(String flag) {
+        if (flag == null) {
+            throw new IllegalArgumentException("null flag passed");
+        }
+
+        if (mFlags == null) {
+            return;
+        }
+
+        mFlags.remove(flag);
+    }
+
+    @Override
     public boolean hasFlag(String flag) {
         if (flag == null) {
             throw new IllegalArgumentException("null flag passed");
