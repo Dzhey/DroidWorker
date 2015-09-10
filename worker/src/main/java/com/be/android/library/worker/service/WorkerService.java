@@ -6,12 +6,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobStatus;
 import com.be.android.library.worker.controllers.JobManager;
+import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.interfaces.Worker;
-import com.be.android.library.worker.base.JobEvent;
-import com.be.android.library.worker.interfaces.Job;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -24,7 +24,7 @@ public abstract class WorkerService extends Service {
     public static final String ACTION_SUBMIT_JOB = "com.be.android.library" +
                                                    ".worker.intent.action.SUBMIT_JOB";
 
-    private static final int STOP_SELF_DELAY_MILLIS = 18000;
+    private static final int STOP_SELF_DELAY_MILLIS_DEFAULT = 18000;
 
     private static WorkerService mInstance;
 
@@ -38,12 +38,14 @@ public abstract class WorkerService extends Service {
     private final JobEventListener mJobFinishedListener = new JobEventListener() {
         @Override
         public void onJobEvent(final JobEvent event) {
-            if (event.isJobFinished() == false) return;
+            if (!event.isJobFinished()) {
+                return;
+            }
 
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    WorkerService.this.onJobFinished(event);
+                    WorkerService.this.onJobFinishedInner(event);
                 }
             });
         }
@@ -106,9 +108,7 @@ public abstract class WorkerService extends Service {
     }
 
     public void submitJob(Job job) {
-        if (isRunning == false) {
-            throw new IllegalStateException("service is already stopped");
-        }
+        registerJob(job);
 
         if (mWorker == null) {
             synchronized (this) {
@@ -118,18 +118,25 @@ public abstract class WorkerService extends Service {
             }
         }
 
-        lastJobSubmitTimeMillis = System.currentTimeMillis();
-
-        mPendingJobs.add(job.getJobId());
-        job.addJobEventListener(mJobFinishedListener);
-
         try {
             mWorker.submitJob(job);
+            onJobSubmitted(job);
 
         } catch (Exception e) {
             Log.e(LOG_TAG, String.format("unable to submit job '%s'", job));
             e.printStackTrace();
         }
+    }
+
+    private void registerJob(Job job) {
+        if (!isRunning) {
+            throw new IllegalStateException("service is already stopped");
+        }
+
+        lastJobSubmitTimeMillis = System.currentTimeMillis();
+
+        mPendingJobs.add(job.getJobId());
+        job.addJobEventListener(mJobFinishedListener);
     }
 
     protected JobManager getJobManager() {
@@ -138,7 +145,26 @@ public abstract class WorkerService extends Service {
 
     protected abstract Worker createWorker(Intent launchIntent);
 
-    private void onJobFinished(JobEvent result) {
+    public boolean hasPendingJobs() {
+        return !mPendingJobs.isEmpty();
+    }
+
+    public Set<Integer> getPendingJobs() {
+        return new HashSet<>(mPendingJobs);
+    }
+
+    protected int getKeepAliveDurationMillis() {
+        return STOP_SELF_DELAY_MILLIS_DEFAULT;
+    }
+
+    protected void onJobSubmitted(Job job) {
+
+    }
+
+    protected void onJobFinished(JobEvent result) {
+    }
+
+    private void onJobFinishedInner(JobEvent result) {
         if (result.getJobId() == JobManager.JOB_ID_UNSPECIFIED) {
             Log.e(LOG_TAG, "finished job has unspecified job id!");
             return;
@@ -146,24 +172,27 @@ public abstract class WorkerService extends Service {
 
         mPendingJobs.remove(result.getJobId());
         scheduleStopSelf();
+
+        onJobFinished(result);
     }
 
     private void scheduleStopSelf() {
-        if (mPendingJobs.isEmpty()) {
+        if (!hasPendingJobs()) {
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     stopSelfIfNoJobs();
                 }
-            }, STOP_SELF_DELAY_MILLIS);
+            }, getKeepAliveDurationMillis());
         }
     }
 
-    private void stopSelfIfNoJobs() {
-        if (mPendingJobs.isEmpty()) {
-            long deltaMillis = System.currentTimeMillis() - lastJobSubmitTimeMillis;
-            long precisionFix = STOP_SELF_DELAY_MILLIS / 20;
-            if (deltaMillis < STOP_SELF_DELAY_MILLIS - precisionFix) {
+    protected void stopSelfIfNoJobs() {
+        if (!hasPendingJobs()) {
+            final long deltaMillis = System.currentTimeMillis() - lastJobSubmitTimeMillis;
+            final int delay = getKeepAliveDurationMillis();
+            final long precisionFix = delay / 20;
+            if (deltaMillis < delay - precisionFix) {
                 return;
             }
             stopSelf();
