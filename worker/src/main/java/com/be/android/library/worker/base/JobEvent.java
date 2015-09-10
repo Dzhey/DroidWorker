@@ -362,6 +362,7 @@ public class JobEvent implements FlagsProvider {
         mUncaughtException = other.mUncaughtException;
         mExtraMessage = other.mExtraMessage;
         mJobParams = other.mJobParams;
+        mFlags = other.mFlags.copy();
     }
 
     public JobParams getJobParams() {
