@@ -7,8 +7,11 @@ import com.be.android.library.worker.base.JobStatus;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.interfaces.JobEventObservable;
+import com.be.android.library.worker.interfaces.JobFactory;
+import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.util.JobFutureResult;
 import com.be.android.library.worker.util.JobSelector;
+import com.be.android.library.worker.util.ReflectiveJobFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -209,6 +212,10 @@ public abstract class JobManager implements JobEventObservable {
         }
 
         return count;
+    }
+
+    public JobFactory getJobFactory(JobParams params) {
+        return new ReflectiveJobFactory(params);
     }
 
     private void checkJobPreconditions(Job job) {
