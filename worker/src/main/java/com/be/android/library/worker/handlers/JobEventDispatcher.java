@@ -40,6 +40,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     private final String mListenerTag;
     private final HierarchyViewer mHierarchyViewer;
     private final JobManager mJobManager;
+    private boolean mIsFlushEnabled;
 
     private final CachedJobEventListener mJobFinishedListener = new CachedJobEventListener() {
 
@@ -202,6 +203,9 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
                 addPendingJobImpl(id);
             }
 
+            if (!mIsFlushEnabled) {
+                return;
+            }
             String cachedListenerTag = savedInstanceState.getString(KEY_FINISH_LISTENER_TAG);
             if (cachedListenerTag != null) {
                 flushJobEvents(cachedListenerTag);
@@ -210,6 +214,10 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     private void flushJobEvents(String cachedListenerTag) {
+        if (!mIsFlushEnabled) {
+            return;
+        }
+
         for (int jobId : mPendingJobs) {
             final JobEvent event = mJobFinishedListener.getLastJobEvent(jobId);
             if (event != null) {
@@ -221,6 +229,14 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
                 });
             }
         }
+    }
+
+    public boolean isFlushEnabled() {
+        return mIsFlushEnabled;
+    }
+
+    public void setFlushEnabled(boolean isFlushEnabled) {
+        mIsFlushEnabled = isFlushEnabled;
     }
 
     public int submitJob(Job job) {
