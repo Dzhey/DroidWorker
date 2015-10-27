@@ -4,13 +4,14 @@ import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobStatus;
 import com.be.android.library.worker.interfaces.FlagsProvider;
 import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.interfaces.Predicate;
 import com.be.android.library.worker.models.Flag;
 import com.be.android.library.worker.models.JobParams;
 
 import java.util.Collection;
 import java.util.List;
 
-public class JobEventFilter {
+public class JobEventFilter implements Predicate<JobEvent> {
 
     public static class Builder {
         private JobEventFilter mJobEventFilter;

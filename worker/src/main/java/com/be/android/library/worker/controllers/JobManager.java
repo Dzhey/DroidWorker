@@ -80,7 +80,7 @@ public abstract class JobManager implements JobEventObservable {
     }
 
     public JobFutureResult submitJobForResult(Job job) {
-        final JobFutureResult pendingResult = new JobFutureResult(job);
+        final JobFutureResult pendingResult = new JobFutureResult(job, this);
 
         submitJob(job);
 

@@ -173,7 +173,7 @@ public abstract class ForkJoinJob extends BaseJob {
                 forkJob.pause();
 
                 forkJob.getParams().setFlag(JobParams.FLAG_FORCE_EXECUTE, true);
-                pendingResult = JobManager.getInstance().submitJobForResult(forkJob);
+                pendingResult = getJobManager().submitJobForResult(forkJob);
 
                 try {
                     futureEvent.get();
@@ -183,7 +183,7 @@ public abstract class ForkJoinJob extends BaseJob {
                             && forkJob.getParams().checkFlag(JobParams.FLAG_JOB_SUBMITTED) == false) {
 
                         forkJob.cancel();
-                        JobManager.getInstance().discardJob(forkJob.getParams().getJobId());
+                        getJobManager().discardJob(forkJob.getParams().getJobId());
 
                         throw new JobExecutionException(String.format(
                                 "Unable to execute unique-grouped job fork '%s'. " +
@@ -288,6 +288,10 @@ public abstract class ForkJoinJob extends BaseJob {
         } finally {
             lock.unlock();
         }
+    }
+
+    protected JobManager getJobManager() {
+        return JobManager.getInstance();
     }
 
     public class ForkBuilder {

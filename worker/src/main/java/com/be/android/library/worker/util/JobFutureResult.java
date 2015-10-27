@@ -20,6 +20,8 @@ public class JobFutureResult implements Future<JobEvent> {
     private JobEvent jobEvent;
     private final Object mMutex = new Object();
     private final CountDownLatch mWaitLatch = new CountDownLatch(1);
+    private final JobManager mJobManager;
+    private JobEventFilter mEventFilter;
 
     private final JobEventListener mJobEventListener =
             new JobEventListener() {
@@ -31,13 +33,15 @@ public class JobFutureResult implements Future<JobEvent> {
                         mJobId = event.getJobParams().getJobId();
 
                         if (mIsCancelled) {
-                            JobManager.getInstance().cancelJob(mJobId);
+                            mJobManager.cancelJob(mJobId);
                             mWaitLatch.countDown();
                             return;
                         }
                     }
 
-                    if (event.isJobFinished() == false) return;
+                    if (handleJobEvent(event)) {
+                        return;
+                    }
 
                     synchronized (mMutex) {
                         jobEvent = event;
@@ -47,12 +51,30 @@ public class JobFutureResult implements Future<JobEvent> {
             };
 
     public JobFutureResult(Job job) {
+        this(job, JobManager.getInstance());
+    }
+
+    public JobFutureResult(Job job, JobManager jobManager) {
         if (job.getStatus() != JobStatus.PENDING) {
             throw new IllegalStateException(String.format("Can't create pending " +
                     "future result for submitted job; \"%s\"", job));
         }
 
+        mJobManager = jobManager;
+
         job.addJobEventListener(mJobEventListener);
+    }
+
+    /**
+     * @param event
+     * @return true to obtain provided event as result
+     */
+    protected boolean handleJobEvent(JobEvent event) {
+        if (mEventFilter != null) {
+            return mEventFilter.apply(event);
+        }
+
+        return event.isJobFinished();
     }
 
     @Override
@@ -64,7 +86,7 @@ public class JobFutureResult implements Future<JobEvent> {
         if (mJobId != JobManager.JOB_ID_UNSPECIFIED) {
             mWaitLatch.countDown();
 
-            return JobManager.getInstance().cancelJob(mJobId);
+            return mJobManager.cancelJob(mJobId);
         }
 
         return true;
@@ -120,5 +142,13 @@ public class JobFutureResult implements Future<JobEvent> {
 
     public int getJobId() {
         return mJobId;
+    }
+
+    public JobEventFilter getEventFilter() {
+        return mEventFilter;
+    }
+
+    public void setEventFilter(JobEventFilter eventFilter) {
+        mEventFilter = eventFilter;
     }
 }
