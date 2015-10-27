@@ -137,10 +137,19 @@ public class BaseJobConfigurator implements JobConfigurator {
     }
 
     @Override
-    public ParamsBuilder flag(String flag) {
+    public JobConfigurator flag(String flag) {
         checkInitialized();
 
         mParamsBuilder.flag(flag);
+
+        return this;
+    }
+
+    @Override
+    public JobConfigurator flags(String... flags) {
+        checkInitialized();
+
+        mParamsBuilder.flags(flags);
 
         return this;
     }

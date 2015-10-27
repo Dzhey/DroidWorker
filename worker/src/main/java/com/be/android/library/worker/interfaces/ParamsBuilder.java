@@ -27,6 +27,8 @@ public interface ParamsBuilder {
 
     ParamsBuilder flag(String flag);
 
+    ParamsBuilder flags(String... flags);
+
     /**
      * Set job class name
      * <be />
