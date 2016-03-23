@@ -5,14 +5,11 @@ import android.util.SparseArray;
 
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
-import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
-import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.Flag;
-import com.be.android.library.worker.models.Flags;
 import com.be.android.library.worker.models.JobFutureResultStub;
-import com.be.android.library.worker.models.Params;
 import com.be.android.library.worker.models.JobParams;
+import com.be.android.library.worker.models.Params;
 import com.be.android.library.worker.util.JobEventFilter;
 import com.be.android.library.worker.util.JobFutureEvent;
 
@@ -328,8 +325,21 @@ public abstract class ForkJoinJob extends BaseJob {
     protected JobEvent joinJobForSuccess(ForkJoinJob job) throws JobExecutionException {
         final JobEvent resultEvent = joinJob(job);
 
-        if (resultEvent.getJobStatus() != JobStatus.OK) {
-            throw new JobExecutionException("job result unsuccessful");
+        switch (resultEvent.getJobStatus()) {
+            case CANCELLED:
+                throw new JobExecutionException(String.format(
+                        "job '%s' has been cancelled", job.getClass().getSimpleName()));
+
+            case FAILED:
+                throw new JobExecutionException(String.format("job '%s' result unsuccessful",
+                        job.getClass().getSimpleName()));
+
+            case OK:
+                break;
+
+            default:
+                throw new JobExecutionException(String.format(
+                        "unexpected result job status: %s", resultEvent.getJobStatus()));
         }
 
         return resultEvent;
