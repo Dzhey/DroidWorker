@@ -2,7 +2,9 @@ package com.be.android.library.worker.models;
 
 import com.be.android.library.worker.interfaces.FlagsProvider;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 public interface JobParams extends FlagsProvider {
@@ -22,6 +24,11 @@ public interface JobParams extends FlagsProvider {
     public static final String FLAG_JOB_PAUSED = "com.be.android.worker.params.FLAG_JOB_PAUSED";
     public static final String FLAG_USE_JOB_CREATOR = "com.be.android.worker.params.FLAG_USE_JOB_CREATOR";
     public static final String EXTRA_JOB_TYPE = "com.be.android.worker.params.EXTRA_JOB_TYPE";
+
+    public static final List<String> PROTECTED_FLAGS = Arrays.asList(
+            FLAG_JOB_ENQUEUED,
+            FLAG_JOB_SUBMITTED,
+            FLAG_JOB_PAUSED);
 
     JobParams copy();
 
