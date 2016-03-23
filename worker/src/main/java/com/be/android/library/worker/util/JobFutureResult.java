@@ -17,7 +17,8 @@ public class JobFutureResult implements Future<JobEvent> {
 
     private volatile boolean mIsCancelled;
     private volatile int mJobId = JobManager.JOB_ID_UNSPECIFIED;
-    private JobEvent jobEvent;
+    private JobEvent mJobEvent;
+    private JobEvent mResultEvent;
     private final Object mMutex = new Object();
     private final CountDownLatch mWaitLatch = new CountDownLatch(1);
     private final JobManager mJobManager;
@@ -39,12 +40,22 @@ public class JobFutureResult implements Future<JobEvent> {
                         }
                     }
 
-                    if (handleJobEvent(event)) {
+                    if (!handleJobEvent(event)) {
+                        if (event.isJobFinished()) {
+                            synchronized (mMutex) {
+                                mResultEvent = event;
+                            }
+                            mWaitLatch.countDown();
+                        }
+
                         return;
                     }
 
                     synchronized (mMutex) {
-                        jobEvent = event;
+                        if (event.isJobFinished()) {
+                            mResultEvent = event;
+                        }
+                        mJobEvent = event;
                     }
                     mWaitLatch.countDown();
                 }
@@ -100,30 +111,44 @@ public class JobFutureResult implements Future<JobEvent> {
     @Override
     public boolean isDone() {
         synchronized (mMutex) {
-            return jobEvent != null;
+            return mJobEvent != null;
         }
     }
 
+    /**
+     *
+     * @return expected JobEvent or null if job was finished and no one event was handled
+     * @throws InterruptedException
+     * @throws ExecutionException
+     */
     @Override
     public JobEvent get() throws InterruptedException, ExecutionException {
         synchronized (mMutex) {
-            if (jobEvent != null) {
-                return jobEvent;
+            if (mJobEvent != null) {
+                return mJobEvent;
             }
         }
 
         mWaitLatch.await();
 
-        return jobEvent;
+        return mJobEvent;
     }
 
+    /**
+     * @param timeout
+     * @param unit
+     * @return expected JobEvent or null if job was finished and no one event was handled
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws TimeoutException
+     */
     @Override
     public JobEvent get(long timeout, TimeUnit unit) throws InterruptedException,
             ExecutionException, TimeoutException {
 
         synchronized (mMutex) {
-            if (jobEvent != null) {
-                return jobEvent;
+            if (mJobEvent != null) {
+                return mJobEvent;
             }
         }
 
@@ -133,11 +158,14 @@ public class JobFutureResult implements Future<JobEvent> {
             throw new CancellationException("cancel has been requested");
         }
 
-        if (jobEvent == null) {
-            throw new TimeoutException("job result await timed out");
-        }
+        return mJobEvent;
+    }
 
-        return jobEvent;
+    /**
+     * @return result event if got any
+     */
+    public JobEvent getResultEvent() {
+        return mResultEvent;
     }
 
     public int getJobId() {
