@@ -22,6 +22,10 @@ public class LoadListEntryJob extends LoadJob {
         Log.i(LOG_TAG, String.format("(%s) Loading data for list entry id: %d",
                 Thread.currentThread().getName(),
                 mListEntryId));
+
+        final String extraVal = findExtra("aa", null);
+
+        Log.i(LOG_TAG, "extra: " + extraVal);
     }
 
     @Override

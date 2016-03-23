@@ -56,6 +56,106 @@ public abstract class ForkJoinJob extends BaseJob {
     }
 
     /**
+     * Check specified flag within this job or it's parents
+     * @param flag unique name of the flag
+     * @return false if flag was not found or flag value otherwise
+     */
+    public boolean checkFlag(String flag) {
+        if (getParams().hasFlag(flag)) {
+            return getParams().checkFlag(flag);
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            if (params.hasFlag(flag)) {
+                return params.checkFlag(flag);
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if job has specified flag within this instance or it's parents
+     * @param flag unique name of the flag
+     * @return true if flag found, false otherwise
+     */
+    public boolean hasFlag(String flag) {
+        if (getParams().hasFlag(flag)) {
+            return true;
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            if (params.hasFlag(flag)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find extra value for specified key within this job and it's parents
+     * @param key a key for which value is mapped
+     * @return null or value if any
+     */
+    public Object findExtra(String key) {
+        final Object extra = getParams().getExtra(key);
+
+        if (extra != null) {
+            return extra;
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            final Object parentExtra = params.getExtra(key);
+
+            if (parentExtra != null) {
+                return parentExtra;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find extra value for specified key within this job and it's parents
+     * @param key a key for which value is mapped
+     * @return true if extra has been found
+     */
+    public boolean hasExtra(String key) {
+        if (getParams().hasExtra(key)) {
+            return true;
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            if (params.hasExtra(key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find extra value for specified key within this job and it's parents
+     * @param key a key for which value is mapped
+     * @return null or value if any
+     */
+    public <T> T findExtra(String key, T defaultValue) {
+        try {
+            final T extra = (T) findExtra(key);
+
+            if (extra == null) {
+                return defaultValue;
+            }
+
+            return extra;
+
+        } catch (ClassCastException e) {
+            throw new RuntimeException("failed to cast extra param for key '" + key + "'", e);
+        }
+    }
+
+    /**
      * Set parents params
      * @param parents list of parent group params
      */
