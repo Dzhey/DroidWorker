@@ -76,7 +76,6 @@ public class ForkJoinLoadDemoFragment extends BaseFragment implements TitleProvi
         return new LoadListEntriesJob()
                 .setup()
                 .group(JobManager.JOB_GROUP_UNIQUE)
-                .addExtra("aa", "bb")
                 .getJob();
     }
 }
