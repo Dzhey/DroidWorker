@@ -19,6 +19,7 @@ public class JobLoader {
 
     private final JobManager mJobManager;
     private final String mAttachTag;
+    private final JobSelector mJobSelector;
     private WeakReference<JobEventHandlerInterface> mEventHandler;
     private WeakReference<JobLoaderCallbacks> mCallbacks;
 
@@ -29,6 +30,7 @@ public class JobLoader {
         mJobManager = jobManager;
 
         mAttachTag = attachTag;
+        mJobSelector = JobSelector.forJobTags(mAttachTag);
         setEventHandler(eventHandler);
         setCallbacks(callbacks);
     }
@@ -49,18 +51,28 @@ public class JobLoader {
             return JobManager.JOB_ID_UNSPECIFIED;
         }
 
-        Job job = mJobManager.findJob(JobSelector.forJobTags(mAttachTag));
+        Job job = mJobManager.findJob(mJobSelector);
 
         if (job != null && job.hasParams()) {
-            JobStatusLock lock = job.acquireStatusLock();
+            final JobStatusLock lock = job.acquireStatusLock();
             try {
-
-                if (!job.isFinished() && !job.isCancelled()) {
-                    if (eventHandler.addPendingJob(job.getJobId())) {
+                if (!job.isCancelled()) {
+                    if (job.isFinished() && eventHandler.isPending(job.getJobId())) {
+                        // Job has finished, but job result is still enqueued
                         return job.getJobId();
                     }
-                }
 
+                    if (!job.isFinished()) {
+                        // Attach handler to running job
+                        if (eventHandler.addPendingJob(job.getJobId())) {
+                            return job.getJobId();
+
+                        } else {
+                            throw new IllegalStateException(
+                                    "job %s has been unexpectedly removed from JobManager");
+                        }
+                    }
+                }
             } finally {
                 lock.release();
             }

@@ -50,6 +50,10 @@ public abstract class JobManager implements JobEventObservable {
         return JOB_GROUP_DEFAULT == groupId;
     }
 
+    public static boolean isThreadPoolGroup(int groupId) {
+        return isDefaultJobGroup(groupId) || groupId == JOB_GROUP_UNIQUE;
+    }
+
     public static boolean isSpecialJobGroup(int groupId) {
         return groupId == JOB_GROUP_UNIQUE ||
                 groupId == JOB_GROUP_DEDICATED;
@@ -230,16 +234,23 @@ public abstract class JobManager implements JobEventObservable {
     }
 
     private void handleJobEvent(JobEvent event) {
-        Job job = findJob(event.getJobParams().getJobId());
+        final Job job = findJob(event.getJobParams().getJobId());
+
+        notifyJobEvent(event);
 
         if (event.isJobFinished()) {
             if (job != null) {
                 job.removeJobEventListener(mJobEventListener);
             }
-            discardJob(event.getJobParams().getJobId());
-        }
 
-        notifyJobEvent(event);
+            final int jobId = event.getJobId();
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    discardJob(jobId);
+                }
+            });
+        }
     }
 
     @Override
