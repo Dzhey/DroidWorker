@@ -6,6 +6,7 @@ import android.os.Parcelable;
 import com.be.android.library.worker.interfaces.FlagsProvider;
 
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -98,6 +99,36 @@ public class Flags implements Parcelable, FlagsProvider {
         }
 
         return copy;
+    }
+
+    /**
+     * Copy all flags with values from given instance to this instance
+     * Flags described in {@link JobParams#PROTECTED_FLAGS} won't be copied
+     * @param flags
+     */
+    public void copyFrom(Flags flags) {
+        if (mFlags == null && flags.mFlags == null) {
+            return;
+        }
+
+        if (mFlags == null) {
+            mFlags = new HashMap<String, Boolean>(flags.mFlags.size());
+        }
+
+        for (Map.Entry<String, Boolean> entry : flags.mFlags.entrySet()) {
+            if (JobParams.PROTECTED_FLAGS.contains(entry.getKey())) {
+                continue;
+            }
+
+            mFlags.put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * @return unmodifiable map with flag names and values
+     */
+    public Map<String, Boolean> asMap() {
+        return Collections.unmodifiableMap(mFlags);
     }
 
     @Override
