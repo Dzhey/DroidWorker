@@ -517,11 +517,6 @@ public abstract class BaseJob extends JobObservable {
 
     @Override
     public void notifyJobEvent(JobEvent event) {
-        if (event.hasParams()) {
-            throw new IllegalArgumentException("specified event already has job params; " +
-                    "make sure you don't return another job's result from this job");
-        }
-
         if (mParams == null) {
             throw new IllegalArgumentException("job params are not defined");
         }

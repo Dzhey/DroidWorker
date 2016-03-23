@@ -335,10 +335,9 @@ public abstract class ForkJoinJob extends BaseJob {
         if (event.isJobFinished()) return;
 
         if (onForwardJobEvent(event)) {
-            JobEvent forkEvent = new JobEvent(event);
-            forkEvent.setJobParams(getParams());
-            forkEvent.setJobStatus(getStatus());
-            notifyJobEventImpl(forkEvent);
+            event.setJobParams(getParams());
+            event.setJobStatus(getStatus());
+            notifyJobEventImpl(event);
         }
     }
 
