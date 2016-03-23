@@ -409,6 +409,10 @@ public class Params implements JobParams, Parcelable {
 
     @Override
     public <T> T getExtra(String key, T defaultValue) {
+        if (!hasExtra(key)) {
+            return defaultValue;
+        }
+
         try {
             return (T) getExtra(key);
         } catch (ClassCastException e) {

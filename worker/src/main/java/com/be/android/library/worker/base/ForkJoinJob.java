@@ -5,14 +5,11 @@ import android.util.SparseArray;
 
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
-import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.interfaces.JobEventListener;
-import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.Flag;
-import com.be.android.library.worker.models.Flags;
 import com.be.android.library.worker.models.JobFutureResultStub;
-import com.be.android.library.worker.models.Params;
 import com.be.android.library.worker.models.JobParams;
+import com.be.android.library.worker.models.Params;
 import com.be.android.library.worker.util.JobEventFilter;
 import com.be.android.library.worker.util.JobFutureEvent;
 
@@ -56,6 +53,106 @@ public abstract class ForkJoinJob extends BaseJob {
     public void onReset() {
         mPendingResults.clear();
         mParentJobsPath.clear();
+    }
+
+    /**
+     * Check specified flag within this job or it's parents
+     * @param flag unique name of the flag
+     * @return false if flag was not found or flag value otherwise
+     */
+    public boolean checkFlag(String flag) {
+        if (getParams().hasFlag(flag)) {
+            return getParams().checkFlag(flag);
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            if (params.hasFlag(flag)) {
+                return params.checkFlag(flag);
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if job has specified flag within this instance or it's parents
+     * @param flag unique name of the flag
+     * @return true if flag found, false otherwise
+     */
+    public boolean hasFlag(String flag) {
+        if (getParams().hasFlag(flag)) {
+            return true;
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            if (params.hasFlag(flag)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find extra value for specified key within this job and it's parents
+     * @param key a key for which value is mapped
+     * @return null or value if any
+     */
+    public Object findExtra(String key) {
+        final Object extra = getParams().getExtra(key);
+
+        if (extra != null) {
+            return extra;
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            final Object parentExtra = params.getExtra(key);
+
+            if (parentExtra != null) {
+                return parentExtra;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find extra value for specified key within this job and it's parents
+     * @param key a key for which value is mapped
+     * @return true if extra has been found
+     */
+    public boolean hasExtra(String key) {
+        if (getParams().hasExtra(key)) {
+            return true;
+        }
+
+        for (JobParams params : mParentJobsPath) {
+            if (params.hasExtra(key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find extra value for specified key within this job and it's parents
+     * @param key a key for which value is mapped
+     * @return null or value if any
+     */
+    public <T> T findExtra(String key, T defaultValue) {
+        try {
+            final T extra = (T) findExtra(key);
+
+            if (extra == null) {
+                return defaultValue;
+            }
+
+            return extra;
+
+        } catch (ClassCastException e) {
+            throw new RuntimeException("failed to cast extra param for key '" + key + "'", e);
+        }
     }
 
     /**
@@ -328,8 +425,21 @@ public abstract class ForkJoinJob extends BaseJob {
     protected JobEvent joinJobForSuccess(ForkJoinJob job) throws JobExecutionException {
         final JobEvent resultEvent = joinJob(job);
 
-        if (resultEvent.getJobStatus() != JobStatus.OK) {
-            throw new JobExecutionException("job result unsuccessful");
+        switch (resultEvent.getJobStatus()) {
+            case CANCELLED:
+                throw new JobExecutionException(String.format(
+                        "job '%s' has been cancelled", job.getClass().getSimpleName()));
+
+            case FAILED:
+                throw new JobExecutionException(String.format("job '%s' result unsuccessful",
+                        job.getClass().getSimpleName()));
+
+            case OK:
+                break;
+
+            default:
+                throw new JobExecutionException(String.format(
+                        "unexpected result job status: %s", resultEvent.getJobStatus()));
         }
 
         return resultEvent;

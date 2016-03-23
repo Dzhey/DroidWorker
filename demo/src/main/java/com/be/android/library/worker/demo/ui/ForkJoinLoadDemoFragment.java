@@ -2,7 +2,6 @@ package com.be.android.library.worker.demo.ui;
 
 import android.content.res.Resources;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,7 +11,6 @@ import com.be.android.library.worker.annotations.OnJobSuccess;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.demo.R;
 import com.be.android.library.worker.demo.jobs.LoadListEntriesJob;
-import com.be.android.library.worker.demo.jobs.LoadListEntryJob;
 import com.be.android.library.worker.demo.model.MultiloadDemoEntry;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.demo.ui.base.TitleProvider;
