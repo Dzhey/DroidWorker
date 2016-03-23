@@ -184,8 +184,6 @@ public class ThreadPoolWorker implements Worker {
     private boolean mIsTraceEnabled;
     private boolean mIsSelectiveTraceEnabled;
     private final AtomicBoolean mIsStopped;
-    private final int mCoreThreadCount;
-    private int mMaximumThreadCount;
     private int mMaxFreeExclusiveExecutorsCount = MAX_FREE_EXCLUSIVE_EXECUTORS_DEFAULT;
 
     /**
@@ -231,8 +229,6 @@ public class ThreadPoolWorker implements Worker {
         }
 
         mHandler = new Handler(Looper.getMainLooper());
-        mCoreThreadCount = threadCount;
-        mMaximumThreadCount = mCoreThreadCount;
         mJobFinishListenerTag = getClass().getSimpleName() + "_listener_tag_" + String.valueOf(System.currentTimeMillis());
         mTraceJobs = new HashSet<String>();
         mIsStopped = new AtomicBoolean(false);
@@ -254,10 +250,9 @@ public class ThreadPoolWorker implements Worker {
         mExecuteLock = new ReentrantLock(false);
         mDispatchLock = new ReentrantLock(false);
         mCoreExecutorQueue = new SynchronousQueue<Runnable>(false);
-        mCoreExecutor = new ThreadPoolExecutor(mCoreThreadCount, mCoreThreadCount,
+        mCoreExecutor = new ThreadPoolExecutor(threadCount, threadCount + 1,
                 THREAD_KEEP_ALIVE_TIME_MILLIS, TimeUnit.MILLISECONDS, mCoreExecutorQueue, mCoreThreadFactory);
 
-        mCoreExecutor.setMaximumPoolSize(mMaximumThreadCount);
         Log.d(LOG_TAG, String.format("thread pool worker created; core pool size: '%d'", threadCount));
     }
 
@@ -449,9 +444,7 @@ public class ThreadPoolWorker implements Worker {
      * @param jobGroupId job group id to apply executor on
      */
     public void allocateExecutor(int jobGroupId) {
-        if (jobGroupId == JobManager.JOB_GROUP_DEDICATED ||
-                jobGroupId == JobManager.JOB_GROUP_UNIQUE) {
-
+        if (JobManager.isSpecialJobGroup(jobGroupId)) {
             throw new IllegalArgumentException("can't allocate executor for " +
                     "JOB_GROUP_DEDICATED or JOB_GROUP_UNIQUE");
         }
@@ -666,7 +659,7 @@ public class ThreadPoolWorker implements Worker {
             }
 
             if (groupId == JobManager.JOB_GROUP_UNIQUE) {
-                if (getPendingJobCount() >= mMaximumThreadCount) {
+                if (mCoreExecutor.getActiveCount() >= mCoreExecutor.getCorePoolSize()) {
                     if (job.getParams().checkFlag(JobParams.FLAG_FORCE_EXECUTE)) {
 
                         allocateExclusiveJobExecutor(job.getJobId());
@@ -718,7 +711,7 @@ public class ThreadPoolWorker implements Worker {
 
         } else {
             Log.w(LOG_TAG, String.format("can't find pending job to " +
-                            "remove on finish: job id:'%s' not found", jobId));
+                    "remove on finish: job id:'%s' not found", jobId));
         }
 
         // Synchronize with job dispatch to ensure serial job enqueue/deque
@@ -837,7 +830,7 @@ public class ThreadPoolWorker implements Worker {
         }
     }
 
-    private int getPendingJobCount() {
+    public int getPendingJobCount() {
         final Lock lock = mPendingJobsLock.readLock();
         lock.lock();
         try {
@@ -867,11 +860,12 @@ public class ThreadPoolWorker implements Worker {
             }
 
             int sz = mPendingJobs.size();
-            if (sz > mMaximumThreadCount) {
-                Log.d(LOG_TAG, String.format("+ incrementing maximum thread pool size from '%d' to '%d'..",
-                        mMaximumThreadCount, sz));
-                mMaximumThreadCount = sz;
-                mCoreExecutor.setMaximumPoolSize(mMaximumThreadCount);
+            if (sz > mCoreExecutor.getMaximumPoolSize()) {
+                Log.d(LOG_TAG, String.format(
+                        "+ incrementing maximum thread pool size from '%d' to '%d'..",
+                        mCoreExecutor.getMaximumPoolSize(),
+                        sz));
+                mCoreExecutor.setMaximumPoolSize(sz);
             }
 
         } finally {
@@ -993,7 +987,7 @@ public class ThreadPoolWorker implements Worker {
         if (job.getStatus() != JobStatus.PENDING) {
             throw new IllegalArgumentException("job is already submitted");
         }
-        if (job.hasId() == false) {
+        if (!job.hasId()) {
             throw new IllegalArgumentException("job has no assigned job id");
         }
     }
@@ -1007,8 +1001,8 @@ public class ThreadPoolWorker implements Worker {
     private boolean isJobTraceEnabled(Job job) {
         if (mIsSelectiveTraceEnabled) {
             if (job != null
-                    && mTraceJobGroups.contains(job.getJobId()) == false
-                    && mTraceJobs.contains(job.getClass().getName()) == false) {
+                    && !mTraceJobGroups.contains(job.getJobId())
+                    && !mTraceJobs.contains(job.getClass().getName())) {
 
                 return false;
             }
@@ -1026,7 +1020,7 @@ public class ThreadPoolWorker implements Worker {
      * @return true if job trace is enabled
      */
     private boolean logTrace(String string, Job loggedJob, Object... args) {
-        if (isJobTraceEnabled(loggedJob) == false) {
+        if (!isJobTraceEnabled(loggedJob)) {
             return false;
         }
 
