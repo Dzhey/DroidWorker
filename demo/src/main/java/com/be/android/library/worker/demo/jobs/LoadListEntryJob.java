@@ -19,7 +19,9 @@ public class LoadListEntryJob extends LoadJob {
     protected void onPreExecute() throws Exception {
         super.onPreExecute();
 
-        Log.i(LOG_TAG, "Loading data for list entry id:" + String.valueOf(mListEntryId));
+        Log.i(LOG_TAG, String.format("(%s) Loading data for list entry id: %d",
+                Thread.currentThread().getName(),
+                mListEntryId));
     }
 
     @Override

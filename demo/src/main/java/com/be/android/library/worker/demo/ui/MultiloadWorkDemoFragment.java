@@ -76,7 +76,7 @@ public class MultiloadWorkDemoFragment extends BaseFragment implements TitleProv
 
     @Override
     public void onDataRequested(int itemId) {
-        Bundle data = new Bundle();
+        final Bundle data = new Bundle();
         data.putInt(KEY_LIST_ENTRY_ID, itemId);
         requestLoad(makeLoaderTag(itemId), data);
         Log.i(LOG_TAG, "Requested data for list entry id:" + String.valueOf(itemId));
@@ -85,6 +85,12 @@ public class MultiloadWorkDemoFragment extends BaseFragment implements TitleProv
     @OnJobSuccess
     public void onItemLoaded(LoadJobResult<MultiloadDemoEntry> result) {
         MultiloadDemoEntry resultData = result.getData();
+
+        if (mAdapter.isItemLoaded(resultData.getItemId())) {
+            throw new IllegalStateException(String.format(
+                    "(onItemLoaded()) item %d already loaded", resultData.getItemId()));
+        }
+
         mAdapter.setItemData(resultData.getItemId(), resultData.getLoadResult());
     }
 

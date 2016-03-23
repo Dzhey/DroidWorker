@@ -75,13 +75,19 @@ public class MultiloadExampleAdapter extends BaseAdapter {
             throw new IllegalArgumentException("data == null");
         }
 
-        Item item = findItemForId(itemId);
+        final Item item = findItemForId(itemId);
 
         if (item != null) {
             item.setData(data);
             item.setIsLoaded(true);
             notifyDataSetChanged();
         }
+    }
+
+    public boolean isItemLoaded(int itemId) {
+        final Item item = findItemForId(itemId);
+
+        return item != null && item.isLoaded();
     }
 
     public Item findItemForId(int itemId) {
