@@ -150,7 +150,7 @@ public abstract class WorkerService extends Service {
     }
 
     public Set<Integer> getPendingJobs() {
-        return new HashSet<>(mPendingJobs);
+        return new HashSet<Integer>(mPendingJobs);
     }
 
     protected int getKeepAliveDurationMillis() {

@@ -35,6 +35,7 @@ public abstract class ForkJoinJob extends BaseJob {
 
     public interface ForkJoiner extends Future<JobEvent> {
         JobEvent join();
+        JobEvent joinForSuccess();
         int getJobId();
     }
 
@@ -245,19 +246,63 @@ public abstract class ForkJoinJob extends BaseJob {
     }
 
     /**
-     * Await until specified job completes it's execution and return result.
+     * Join all forked jobs and return result events
+     * @return
+     */
+    protected List<JobEvent> joinAll() {
+        final List<JobEvent> results = new ArrayList<JobEvent>();
+
+        final Lock lock = mLock.readLock();
+        lock.lock();
+
+        try {
+            final int sz = mPendingResults.size();
+            for (int i = 0; i < sz; i++) {
+                results.add(joinJob(mPendingResults.keyAt(i)));
+            }
+
+        } finally {
+            lock.unlock();
+        }
+
+        return results;
+    }
+
+    /**
+     * Await until specified job complete it's execution and return result.
      *
      * @param joinJob job to join
      * @return fork job result
      */
     protected JobEvent joinJob(ForkJoinJob joinJob) {
-        Future<JobEvent> pendingResult = findPendingResult(joinJob);
+        final Future<JobEvent> pendingResult = findPendingResult(joinJob);
 
         if (pendingResult == null) {
             throw new IllegalArgumentException(String.format(
                     "no pending result for job '%s' found", joinJob));
         }
 
+        return joinJobImpl(pendingResult);
+    }
+
+    /**
+     * Await until specified job complete it's execution and return result.
+     *
+     * @param forkJobId job to join
+     * @return fork job result
+     */
+    protected JobEvent joinJob(int forkJobId) {
+        final Future<JobEvent> pendingResult = mPendingResults.get(forkJobId);
+
+        if (pendingResult == null) {
+            throw new IllegalArgumentException(String.format(
+                    "no pending result for job id:'%s' found", forkJobId));
+        }
+
+        return joinJobImpl(pendingResult);
+    }
+
+    private JobEvent joinJobImpl(Future<JobEvent> pendingResult) {
         try {
             return pendingResult.get();
 
@@ -273,17 +318,43 @@ public abstract class ForkJoinJob extends BaseJob {
         }
     }
 
+    /**
+     * Await until specified job complete it's execution and return result.
+     * if result job status doesn't meet {@link JobStatus#OK}
+     * then {@link JobExecutionException} will be thrown
+     * @param job
+     * @throws JobExecutionException if result unsuccessful
+     */
+    protected JobEvent joinJobForSuccess(ForkJoinJob job) throws JobExecutionException {
+        final JobEvent resultEvent = joinJob(job);
+
+        if (resultEvent.getJobStatus() != JobStatus.OK) {
+            throw new JobExecutionException("job result unsuccessful");
+        }
+
+        return resultEvent;
+    }
+
     protected Future<JobEvent> findPendingResult(ForkJoinJob forkJob) {
-        final Lock lock = mLock.readLock();
-        lock.lock();
         final JobParams params = forkJob.getParams();
 
         if (params == null || !params.isJobIdAssigned()) {
             return null;
         }
 
+        return findPendingResult(params.getJobId());
+    }
+
+    protected Future<JobEvent> findPendingResult(int jobId) {
+        final Lock lock = mLock.readLock();
+        lock.lock();
+
+        if (mPendingResults.indexOfKey(jobId) < 0) {
+            return null;
+        }
+
         try {
-            return mPendingResults.get(params.getJobId());
+            return mPendingResults.get(jobId);
 
         } finally {
             lock.unlock();
@@ -350,6 +421,11 @@ public abstract class ForkJoinJob extends BaseJob {
         @Override
         public JobEvent join() {
             return ForkJoinJob.this.joinJob(job);
+        }
+
+        @Override
+        public JobEvent joinForSuccess() {
+            return ForkJoinJob.this.joinJobForSuccess(job);
         }
 
         @Override
