@@ -17,6 +17,7 @@ public interface JobConfigurator extends ParamsBuilder {
     JobConfigurator addExtra(String key, Object value);
     JobConfigurator removeExtra(String key);
     JobConfigurator flag(String flag, boolean value);
+    JobConfigurator flag(String flag);
     JobConfigurator params(JobParams params);
     Job apply();
     Job getJob();
