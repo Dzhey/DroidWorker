@@ -2,7 +2,7 @@ package com.be.android.library.worker.exceptions;
 
 import com.be.android.library.worker.base.JobEvent;
 
-public class JobExecutionException extends Exception {
+public class JobExecutionException extends RuntimeException {
 
     private JobEvent mJobEvent;
 
