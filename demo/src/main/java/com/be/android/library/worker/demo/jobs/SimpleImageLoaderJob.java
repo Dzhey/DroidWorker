@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.jobs.LoadJob;
 import com.be.android.library.worker.models.LoadJobResult;
+import com.be.library.worker.annotations.JobExtra;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,7 +14,8 @@ import java.net.URL;
 
 public class SimpleImageLoaderJob extends LoadJob {
 
-    private final String mImageUrl;
+    @JobExtra
+    String mImageUrl;
 
     public SimpleImageLoaderJob(String imageUrl) {
         mImageUrl = imageUrl;
