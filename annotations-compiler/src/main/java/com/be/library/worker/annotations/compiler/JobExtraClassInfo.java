@@ -23,27 +23,27 @@ public class JobExtraClassInfo {
     private final String mPackageName;
     private final String mVariableType;
     private final boolean mHasDeclaredVariableKey;
+    private final boolean mIsForkJoinJob;
+    private final boolean mIsOptional;
 
     public JobExtraClassInfo(VariableElement variableElement,
                              ProcessingEnvironment env) throws IllegalArgumentException {
 
         mErrorReporter = new ErrorReporter(env);
         mTypeUtils = env.getTypeUtils();
-//        mBaseJobTypeMirror = mElementUtils.getTypeElement(Job.class.getSimpleName()).asType();
 
         final TypeElement jobClassElement = TypeSimplifier.enclosingClass(variableElement);
-//        if (mBaseJobTypeMirror == null) {
-//            mErrorReporter.abortWithError(
-//                    "failed to find " + Consts.BASE_JOB_TYPE_NAME + "class", jobClassElement);
-//        }
 
-//        checkJobSuperclass(jobClassElement);
+        checkJobSuperclass(jobClassElement);
 
+        mIsForkJoinJob = isForkJoinJob(jobClassElement);
         mQualifiedJobName = jobClassElement.getQualifiedName().toString();
         mSimpleJobName = jobClassElement.getSimpleName().toString();
         mPackageName = TypeSimplifier.packageNameOf(jobClassElement);
 
         final JobExtra annotation = variableElement.getAnnotation(JobExtra.class);
+
+        mIsOptional = annotation.optional();
 
         if (variableElement.getModifiers().contains(Modifier.FINAL)) {
             mErrorReporter.abortWithError("\"" +
@@ -82,6 +82,26 @@ public class JobExtraClassInfo {
         }
     }
 
+    private boolean isForkJoinJob(TypeElement jobClassElement) {
+        TypeMirror superType = jobClassElement.getSuperclass();
+
+        while (true) {
+            if (!superType.getKind().equals(TypeKind.DECLARED)) {
+                break;
+            }
+
+            final TypeElement typeElement = (TypeElement) ((DeclaredType) superType).asElement();
+
+            if (typeElement.getQualifiedName().contentEquals("com.be.android.library.worker.base.ForkJoinJob")) {
+                return true;
+            }
+
+            superType = typeElement.getSuperclass();
+        }
+
+        return false;
+    }
+
     public String getQualifiedJobName() {
         return mQualifiedJobName;
     }
@@ -97,18 +117,19 @@ public class JobExtraClassInfo {
     private void checkJobSuperclass(TypeElement jobClassElement) {
         final TypeMirror parent = jobClassElement.asType();
 
-//        if (!parent.getKind().equals(TypeKind.DECLARED)) {
-//            mErrorReporter.abortWithError(String.format(
-//                    "%s may only present in job class",
-//                    JobProcessor.ANNOTATION_PRINTABLE), jobClassElement);
-//        }
+        if (!parent.getKind().equals(TypeKind.DECLARED)) {
+            mErrorReporter.abortWithError(String.format(
+                    "%s may only present in job class",
+                    JobProcessor.ANNOTATION_PRINTABLE), jobClassElement);
+        }
 
-
+        final TypeElement parentTypeElement = (TypeElement) ((DeclaredType) parent).asElement();
         if (!checkJobSuperclassImpl(parent)) {
             mErrorReporter.abortWithError(String.format(
-                    "%s should implement '%s' interface",
-                    JobProcessor.ANNOTATION_PRINTABLE,
-                    Consts.JOB_INTERFACE_TYPE_NAME), jobClassElement);
+                    "%s should implement '%s' interface in order to user annotation '%s'",
+                    parentTypeElement.getQualifiedName(),
+                    Consts.JOB_INTERFACE_TYPE_NAME,
+                    JobProcessor.ANNOTATION_PRINTABLE), jobClassElement);
         }
     }
 
@@ -148,6 +169,14 @@ public class JobExtraClassInfo {
 
     public boolean isHasDeclaredVariableKey() {
         return mHasDeclaredVariableKey;
+    }
+
+    public boolean isForkJoinJob() {
+        return mIsForkJoinJob;
+    }
+
+    public boolean isOptional() {
+        return mIsOptional;
     }
 
 

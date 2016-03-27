@@ -13,7 +13,7 @@ import java.net.URL;
 
 public class SimpleImageLoaderJob extends LoadJob {
 
-    @JobExtra
+    @JobExtra(optional = false)
     String mImageUrl;
 
     public SimpleImageLoaderJob() {

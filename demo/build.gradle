@@ -39,9 +39,16 @@ dependencies {
 
     apt project(':annotations-compiler')
 
-    androidTestCompile 'com.android.support.test:rules:0.2'
-    androidTestCompile 'com.android.support.test.espresso:espresso-core:2.0'
-//    androidTestCompile 'com.android.support.test.espresso:espresso-contrib:2.0'
-//    androidTestCompile 'com.android.support.test:runner:0.2'
+    androidTestCompile 'com.android.support.test:rules:0.4'
+    androidTestCompile 'com.android.support.test.espresso:espresso-core:2.2.1'
+    androidTestCompile 'com.android.support.test.espresso:espresso-contrib:2.2.1'
+    androidTestCompile 'com.android.support.test:runner:0.4'
     androidTestCompile 'com.android.support.test:testing-support-lib:0.1'
+}
+
+// Force support-annotations for espresso tests
+configurations.all {
+    resolutionStrategy {
+        force 'com.android.support:support-annotations:23.2.1'
+    }
 }

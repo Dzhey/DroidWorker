@@ -9,4 +9,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface JobExtra {
     String value() default "";
+    boolean optional() default true;
 }
