@@ -53,7 +53,14 @@ class ErrorReporter {
      * @param e   the element to which it pertains
      */
     void reportError(String msg, Element e) {
-        mMessager.printMessage(Diagnostic.Kind.ERROR, msg, e);
+        if (e != null) {
+            mMessager.printMessage(Diagnostic.Kind.ERROR, msg, e);
+        } else {
+            reportError(msg);
+        }
+    }
+    void reportError(String msg) {
+        mMessager.printMessage(Diagnostic.Kind.ERROR, msg);
     }
 
     /**
@@ -65,6 +72,11 @@ class ErrorReporter {
      */
     void abortWithError(String msg, Element e) {
         reportError(msg, e);
+        throw new AbortProcessingException();
+    }
+
+    void abortWithError(String msg) {
+        reportError(msg);
         throw new AbortProcessingException();
     }
 }

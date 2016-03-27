@@ -1,6 +1,13 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.neenbedankt.android-apt'
 
+apt {
+    arguments {
+        androidManifestFile variant.outputs[0]?.processResources?.manifestFile
+        resourcePackageName android.defaultConfig.applicationId
+    }
+}
+
 android {
     compileSdkVersion 23
     buildToolsVersion "21.1.2"
@@ -30,19 +37,11 @@ dependencies {
     compile 'com.android.support:support-annotations:23.2.1'
     compile 'com.android.support:appcompat-v7:23.2.1'
 
-    apt project(':annotations')
+    apt project(':annotations-compiler')
 
     androidTestCompile 'com.android.support.test:rules:0.2'
     androidTestCompile 'com.android.support.test.espresso:espresso-core:2.0'
 //    androidTestCompile 'com.android.support.test.espresso:espresso-contrib:2.0'
 //    androidTestCompile 'com.android.support.test:runner:0.2'
     androidTestCompile 'com.android.support.test:testing-support-lib:0.1'
-}
-
-configurations.all {
-    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-        if (details.requested.group == 'com.android.support') {
-            details.useVersion '22.0.0'
-        }
-    }
 }

@@ -7,38 +7,37 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
 public class JobExtraClassInfo {
 
-    private final VariableElement mAnnotatedElement;
+    private final String mVariableKey;
     private final String mVariableName;
     private final ErrorReporter mErrorReporter;
-    private final TypeMirror mBaseJobTypeMirror;
     private final Types mTypeUtils;
-    private final Elements mElementUtils;
     private final String mQualifiedJobName;
     private final String mSimpleJobName;
     private final String mPackageName;
+    private final String mVariableType;
+    private final boolean mHasDeclaredVariableKey;
 
     public JobExtraClassInfo(VariableElement variableElement,
                              ProcessingEnvironment env) throws IllegalArgumentException {
 
         mErrorReporter = new ErrorReporter(env);
-        mAnnotatedElement = variableElement;
-        mElementUtils = env.getElementUtils();
         mTypeUtils = env.getTypeUtils();
-        mBaseJobTypeMirror = mElementUtils.getTypeElement(Consts.BASE_JOB_TYPE_NAME).asType();
+//        mBaseJobTypeMirror = mElementUtils.getTypeElement(Job.class.getSimpleName()).asType();
 
         final TypeElement jobClassElement = TypeSimplifier.enclosingClass(variableElement);
-        if (mBaseJobTypeMirror == null) {
-            mErrorReporter.abortWithError(
-                    "failed to find " + Consts.BASE_JOB_TYPE_NAME + "class", jobClassElement);
-        }
+//        if (mBaseJobTypeMirror == null) {
+//            mErrorReporter.abortWithError(
+//                    "failed to find " + Consts.BASE_JOB_TYPE_NAME + "class", jobClassElement);
+//        }
 
-        checkJobSuperclass(jobClassElement);
+//        checkJobSuperclass(jobClassElement);
 
         mQualifiedJobName = jobClassElement.getQualifiedName().toString();
         mSimpleJobName = jobClassElement.getSimpleName().toString();
@@ -46,30 +45,49 @@ public class JobExtraClassInfo {
 
         final JobExtra annotation = variableElement.getAnnotation(JobExtra.class);
 
-        if (!variableElement.getModifiers().contains(Modifier.DEFAULT)
-                && !variableElement.getModifiers().contains(Modifier.PUBLIC)) {
-
-            mErrorReporter.abortWithError(variableElement.getSimpleName().toString() +
-                    "in " +
+        if (variableElement.getModifiers().contains(Modifier.FINAL)) {
+            mErrorReporter.abortWithError("\"" +
+                    variableElement.getSimpleName().toString() +
+                    "\" in \"" +
                     mQualifiedJobName +
-                    " should have public or default visibility modifier", variableElement);
+                    "\" cannot be final", variableElement);
         }
 
-        if (Strings.isNullOrEmpty(annotation.value())) {
-            mVariableName = JobProcessor.ANNOTATION_PRINTABLE +
-                    "_" +
+        if (variableElement.getModifiers().contains(Modifier.PROTECTED)
+                || variableElement.getModifiers().contains(Modifier.PRIVATE)
+                || variableElement.getModifiers().contains(Modifier.STATIC)) {
+
+            mErrorReporter.abortWithError("\"" +
+                    variableElement.getSimpleName().toString() +
+                    "\" in \"" +
                     mQualifiedJobName +
+                    "\" should have public or default visibility modifier", variableElement);
+        }
+
+        mVariableType = ((TypeElement) ((DeclaredType) variableElement.asType()).asElement())
+                .getQualifiedName()
+                .toString();
+        mVariableName = variableElement.getSimpleName().toString();
+
+        if (Strings.isNullOrEmpty(annotation.value())) {
+            mVariableKey = JobProcessor.ANNOTATION_PRINTABLE +
                     "_" +
-                    variableElement.asType().toString() +
+                    mSimpleJobName +
                     "_" +
-                    variableElement.getSimpleName().toString();
+                    mVariableName;
+            mHasDeclaredVariableKey = false;
         } else {
-            mVariableName = annotation.value();
+            mVariableKey = annotation.value();
+            mHasDeclaredVariableKey = true;
         }
     }
 
     public String getQualifiedJobName() {
         return mQualifiedJobName;
+    }
+
+    public String getVariableKey() {
+        return mVariableKey;
     }
 
     public String getVariableName() {
@@ -88,14 +106,27 @@ public class JobExtraClassInfo {
 
         if (!checkJobSuperclassImpl(parent)) {
             mErrorReporter.abortWithError(String.format(
-                    "%s may only present in job class",
-                    JobProcessor.ANNOTATION_PRINTABLE), jobClassElement);
+                    "%s should implement '%s' interface",
+                    JobProcessor.ANNOTATION_PRINTABLE,
+                    Consts.JOB_INTERFACE_TYPE_NAME), jobClassElement);
         }
     }
 
-    private boolean checkJobSuperclassImpl(TypeMirror parent) {
-        for (TypeMirror type : mTypeUtils.directSupertypes(parent)) {
-            if (mTypeUtils.isAssignable(type, mBaseJobTypeMirror)) {
+    private boolean checkJobSuperclassImpl(TypeMirror child) {
+        for (TypeMirror type : mTypeUtils.directSupertypes(child)) {
+            if (!type.getKind().equals(TypeKind.DECLARED)) {
+                return false;
+            }
+
+            final String qualifiedName = ((TypeElement) ((DeclaredType) type).asElement())
+                    .getQualifiedName()
+                    .toString();
+
+            if (Consts.JOB_INTERFACE_TYPE_NAME.equals(qualifiedName)) {
+                return true;
+            }
+
+            if (checkJobSuperclassImpl(type)) {
                 return true;
             }
         }
@@ -109,6 +140,14 @@ public class JobExtraClassInfo {
 
     public String getPackageName() {
         return mPackageName;
+    }
+
+    public String getVariableType() {
+        return mVariableType;
+    }
+
+    public boolean isHasDeclaredVariableKey() {
+        return mHasDeclaredVariableKey;
     }
 
 
