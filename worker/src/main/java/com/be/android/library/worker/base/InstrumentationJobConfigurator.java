@@ -1,10 +1,10 @@
 package com.be.android.library.worker.base;
 
 import com.be.android.library.worker.interfaces.Job;
-import com.be.android.library.worker.interfaces.ParamsBuilder;
 import com.be.android.library.worker.models.JobParams;
 
 import java.util.Collection;
+import java.util.Map;
 
 public class InstrumentationJobConfigurator implements JobConfigurator {
 
@@ -159,6 +159,13 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
     @Override
     public InstrumentationJobConfigurator addExtra(String key, Object value) {
         mJobConfigurator.addExtra(key, value);
+
+        return this;
+    }
+
+    @Override
+    public <T extends Map<String, Object>> JobConfigurator addExtras(T extras) {
+        mJobConfigurator.addExtras(extras);
 
         return this;
     }

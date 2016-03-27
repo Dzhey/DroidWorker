@@ -9,6 +9,7 @@ import com.be.android.library.worker.models.JobParams;
 import com.be.android.library.worker.models.Params;
 
 import java.util.Collection;
+import java.util.Map;
 
 public class BaseJobConfigurator implements JobConfigurator {
 
@@ -114,6 +115,15 @@ public class BaseJobConfigurator implements JobConfigurator {
         checkInitialized();
 
         mParamsBuilder.addExtra(key, value);
+
+        return this;
+    }
+
+    @Override
+    public <T extends Map<String, Object>> JobConfigurator addExtras(T extras) {
+        checkInitialized();
+
+        mParamsBuilder.addExtras(extras);
 
         return this;
     }
