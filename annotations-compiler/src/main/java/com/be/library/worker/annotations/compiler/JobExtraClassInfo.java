@@ -178,28 +178,4 @@ public class JobExtraClassInfo {
     public boolean isOptional() {
         return mIsOptional;
     }
-
-
-//    private boolean checkJobSuperclassImpl(TypeMirror parent) {
-//        if (mTypeUtils.isSameType(parent, mJavaObjectTypeMirror)) {
-//            return false;
-//        }
-//
-//        for (TypeMirror type : mTypeUtils.directSupertypes(parent)) {
-//            if (type.getKind().equals(TypeKind.DECLARED)) {
-//                continue;
-//            }
-//
-//            final DeclaredType declaredType = (DeclaredType) type;
-//            final Element element = declaredType.asElement();
-//
-//            if (!element.getKind().equals(ElementKind.CLASS)) {
-//                continue;
-//            }
-//
-//            if (type.get)
-//        }
-//
-//        return false;
-//    }
 }
