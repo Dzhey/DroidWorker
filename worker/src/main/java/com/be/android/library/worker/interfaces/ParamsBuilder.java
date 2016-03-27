@@ -3,6 +3,7 @@ package com.be.android.library.worker.interfaces;
 import com.be.android.library.worker.models.JobParams;
 
 import java.util.Collection;
+import java.util.Map;
 
 public interface ParamsBuilder {
     ParamsBuilder group(int groupId);
@@ -20,6 +21,8 @@ public interface ParamsBuilder {
     ParamsBuilder removeTag(String tag);
 
     ParamsBuilder addExtra(String key, Object value);
+
+    <T extends Map<String, Object>> ParamsBuilder addExtras(T extras);
 
     ParamsBuilder removeExtra(String key);
 

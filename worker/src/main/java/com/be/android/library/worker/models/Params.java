@@ -144,6 +144,19 @@ public class Params implements JobParams, Parcelable {
         }
 
         @Override
+        public <T extends Map<String, Object>> ParamsBuilder addExtras(T extras) {
+            checkNotBuilt();
+
+            if (mParams.mExtras == null) {
+                mParams.mExtras = new HashMap<String, Object>();
+            }
+
+            mParams.mExtras.putAll(extras);
+
+            return this;
+        }
+
+        @Override
         public Builder removeExtra(String key) {
             checkNotBuilt();
 
