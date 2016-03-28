@@ -12,7 +12,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 
-public class JobExtraClassInfo {
+public class JobExtraInfo {
 
     private final String mVariableKey;
     private final String mVariableName;
@@ -25,8 +25,8 @@ public class JobExtraClassInfo {
     private final boolean mIsForkJoinJob;
     private final boolean mIsOptional;
 
-    public JobExtraClassInfo(VariableElement variableElement,
-                             ProcessingEnvironment env) throws IllegalArgumentException {
+    public JobExtraInfo(VariableElement variableElement,
+                        ProcessingEnvironment env) throws IllegalArgumentException {
 
         mErrorReporter = new ErrorReporter(env);
         mTypeUtils = env.getTypeUtils();
@@ -67,7 +67,7 @@ public class JobExtraClassInfo {
         mVariableName = variableElement.getSimpleName().toString();
 
         if (Strings.isNullOrEmpty(annotation.value())) {
-            mVariableKey = JobProcessor.ANNOTATION_PRINTABLE +
+            mVariableKey = JobProcessor.EXTRA_ANNOTATION_PRINTABLE +
                     "_" +
                     mSimpleJobName +
                     "_" +
@@ -115,7 +115,7 @@ public class JobExtraClassInfo {
         if (!parent.getKind().equals(TypeKind.DECLARED)) {
             mErrorReporter.abortWithError(String.format(
                     "%s may only present in job class",
-                    JobProcessor.ANNOTATION_PRINTABLE), jobClassElement);
+                    JobProcessor.EXTRA_ANNOTATION_PRINTABLE), jobClassElement);
         }
 
         final TypeElement parentTypeElement = (TypeElement) ((DeclaredType) parent).asElement();
@@ -124,7 +124,7 @@ public class JobExtraClassInfo {
                     "%s should implement '%s' interface in order to user annotation '%s'",
                     parentTypeElement.getQualifiedName(),
                     Consts.JOB_INTERFACE_TYPE_NAME,
-                    JobProcessor.ANNOTATION_PRINTABLE), jobClassElement);
+                    JobProcessor.EXTRA_ANNOTATION_PRINTABLE), jobClassElement);
         }
     }
 
