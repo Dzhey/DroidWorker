@@ -213,6 +213,13 @@ public class InstrumentationJobConfigurator implements JobConfigurator {
     }
 
     @Override
+    public InstrumentationJobConfigurator configure(Delegate configuratorDelegate) {
+        mJobConfigurator.configure(configuratorDelegate);
+
+        return this;
+    }
+
+    @Override
     public JobParams build() {
         return mJobConfigurator.build();
     }

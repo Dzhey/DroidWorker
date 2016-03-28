@@ -183,6 +183,15 @@ public class BaseJobConfigurator implements JobConfigurator {
     }
 
     @Override
+    public JobConfigurator configure(Delegate configuratorDelegate) {
+        checkInitialized();
+
+        configuratorDelegate.configure(this);
+
+        return this;
+    }
+
+    @Override
     public JobParams build() {
         checkInitialized();
 

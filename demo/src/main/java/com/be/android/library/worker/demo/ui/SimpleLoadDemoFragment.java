@@ -19,7 +19,7 @@ import com.be.android.library.worker.annotations.OnJobSuccess;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.demo.R;
 import com.be.android.library.worker.demo.jobs.SimpleImageLoaderJob;
-import com.be.android.library.worker.demo.jobs.SimpleImageLoaderJobExtrasInjector;
+import com.be.android.library.worker.demo.jobs.SimpleImageLoaderJobExtras;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.demo.ui.base.TitleProvider;
 import com.be.android.library.worker.interfaces.Job;
@@ -59,7 +59,7 @@ public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvide
                 // Use JobManager.JOB_GROUP_UNIQUE to execute job asynchronously
                 // and prevent other jobs from having to wait for completion of this job
                 .group(JobManager.JOB_GROUP_UNIQUE)
-                .addExtras(SimpleImageLoaderJobExtrasInjector.captureExtras(IMG_URL))
+                .addExtras(SimpleImageLoaderJobExtras.captureExtras(IMG_URL))
                 .getJob();
     }
 

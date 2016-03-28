@@ -23,7 +23,7 @@ public class SimpleImageLoaderJob extends LoadJob {
     protected void onPreExecute() throws Exception {
         super.onPreExecute();
 
-        SimpleImageLoaderJobExtrasInjector.injectExtras(this);
+        SimpleImageLoaderJobExtras.injectExtras(this);
     }
 
     @Override

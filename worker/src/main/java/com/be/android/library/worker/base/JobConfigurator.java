@@ -8,6 +8,11 @@ import java.util.Collection;
 import java.util.Map;
 
 public interface JobConfigurator extends ParamsBuilder {
+
+    interface Delegate {
+        void configure(JobConfigurator configurator);
+    }
+
     JobConfigurator group(int groupId);
     JobConfigurator priority(int priority);
     JobConfigurator payload(Object payload);
@@ -21,6 +26,7 @@ public interface JobConfigurator extends ParamsBuilder {
     JobConfigurator flag(String flag, boolean value);
     JobConfigurator flag(String flag);
     JobConfigurator params(JobParams params);
+    JobConfigurator configure(Delegate configuratorDelegate);
     Job apply();
     Job getJob();
 }
