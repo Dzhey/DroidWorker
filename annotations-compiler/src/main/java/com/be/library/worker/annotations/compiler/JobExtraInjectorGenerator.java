@@ -5,14 +5,12 @@ import com.google.common.collect.Iterables;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import com.squareup.javapoet.TypeVariableName;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -43,7 +41,7 @@ public class JobExtraInjectorGenerator {
 
     private String makeFieldNameForKey(String extraVariableName) {
         if (extraVariableName.length() > 0 && extraVariableName.toUpperCase().startsWith("M")) {
-            extraVariableName = extraVariableName.substring(1, extraVariableName.length() - 1);
+            extraVariableName = extraVariableName.substring(1, extraVariableName.length());
         }
 
         return "EXTRA_" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, extraVariableName);
@@ -80,31 +78,35 @@ public class JobExtraInjectorGenerator {
     }
 
     private MethodSpec makeCaptureExtrasMethodSpec(Collection<JobExtraClassInfo> extrasInfo) {
+        final TypeName delegateTypeName = TypeVariableName.get(Consts.JOB_CONFIGURATOR_DELEGATE);
         final MethodSpec.Builder captureExtrasSpecBuilder = MethodSpec.methodBuilder("captureExtras")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(ParameterizedTypeName.get(Map.class, String.class, Object.class));
+                .returns(delegateTypeName);
 
         for (JobExtraClassInfo info : extrasInfo) {
             final TypeName varTypeName = TypeVariableName.get(info.getVariableType());
-            captureExtrasSpecBuilder.addParameter(varTypeName, info.getVariableName());
+            captureExtrasSpecBuilder.addParameter(varTypeName, info.getVariableName(), Modifier.FINAL);
         }
 
-        final String mapName = "extras";
-        final TypeName mapInterfaceTypeName = ParameterizedTypeName.get(
-                Map.class, String.class, Object.class);
-        final TypeName mapTypeName = ParameterizedTypeName.get(
-                HashMap.class, String.class, Object.class);
-        captureExtrasSpecBuilder.addStatement("final $T $L = new $T($L)",
-                mapInterfaceTypeName, mapName, mapTypeName, extrasInfo.size());
+        final String configuratorArgName = "configurator";
+        final MethodSpec.Builder delegateMethodSpecBuilder = MethodSpec.methodBuilder("configure")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(TypeVariableName.get(Consts.JOB_CONFIGURATOR), configuratorArgName)
+                .returns(void.class);
 
         for (JobExtraClassInfo info : extrasInfo) {
-            captureExtrasSpecBuilder.addStatement("$L.put($L, $L)",
-                    mapName,
+            delegateMethodSpecBuilder.addStatement("$L.addExtra($L, $L)",
+                    configuratorArgName,
                     makeFieldNameForKey(info.getVariableName()),
                     info.getVariableName());
         }
 
-        captureExtrasSpecBuilder.addStatement("return $L", mapName);
+        final TypeSpec.Builder delegateSpecBuilder = TypeSpec.anonymousClassBuilder("")
+                .addSuperinterface(TypeVariableName.get(Consts.JOB_CONFIGURATOR_DELEGATE))
+                .addMethod(delegateMethodSpecBuilder.build());
+
+        captureExtrasSpecBuilder.addStatement("return $L", delegateSpecBuilder.build());
 
 
         return captureExtrasSpecBuilder.build();
