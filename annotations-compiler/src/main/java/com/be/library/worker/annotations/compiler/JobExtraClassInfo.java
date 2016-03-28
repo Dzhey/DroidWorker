@@ -22,7 +22,6 @@ public class JobExtraClassInfo {
     private final String mSimpleJobName;
     private final String mPackageName;
     private final String mVariableType;
-    private final boolean mHasDeclaredVariableKey;
     private final boolean mIsForkJoinJob;
     private final boolean mIsOptional;
 
@@ -64,9 +63,7 @@ public class JobExtraClassInfo {
                     "\" should have public or default visibility modifier", variableElement);
         }
 
-        mVariableType = ((TypeElement) ((DeclaredType) variableElement.asType()).asElement())
-                .getQualifiedName()
-                .toString();
+        mVariableType = variableElement.asType().toString();
         mVariableName = variableElement.getSimpleName().toString();
 
         if (Strings.isNullOrEmpty(annotation.value())) {
@@ -75,10 +72,8 @@ public class JobExtraClassInfo {
                     mSimpleJobName +
                     "_" +
                     mVariableName;
-            mHasDeclaredVariableKey = false;
         } else {
             mVariableKey = annotation.value();
-            mHasDeclaredVariableKey = true;
         }
     }
 
@@ -165,10 +160,6 @@ public class JobExtraClassInfo {
 
     public String getVariableType() {
         return mVariableType;
-    }
-
-    public boolean isHasDeclaredVariableKey() {
-        return mHasDeclaredVariableKey;
     }
 
     public boolean isForkJoinJob() {

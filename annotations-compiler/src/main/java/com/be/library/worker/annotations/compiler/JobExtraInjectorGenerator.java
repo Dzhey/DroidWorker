@@ -26,9 +26,11 @@ public class JobExtraInjectorGenerator {
     private static final String VAR_PARAMS = "params";
 
     private ProcessingEnvironment mProcessingEnvironment;
+    private final Logger mLogger;
 
     public JobExtraInjectorGenerator(ProcessingEnvironment environment) {
         mProcessingEnvironment = environment;
+        mLogger = new Logger(mProcessingEnvironment);
     }
 
     public void generateCode(JobClassInfo info) throws IOException {
@@ -42,6 +44,9 @@ public class JobExtraInjectorGenerator {
         final String injectorClassName = firstEntry.getSimpleJobName() + SUFFIX;
         final String packageName = firstEntry.getPackageName();
         final TypeName jobTypeName = TypeVariableName.get(qualifiedJobName);
+
+        mLogger.note(String.format("Generating extras injector for \"%s\" (%s)..",
+                qualifiedJobName, injectorClassName));
 
         final TypeSpec injectorSpec = TypeSpec.classBuilder(injectorClassName)
                 .addModifiers(Modifier.FINAL, Modifier.PUBLIC)

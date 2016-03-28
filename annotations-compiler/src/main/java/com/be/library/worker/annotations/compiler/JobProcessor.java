@@ -25,6 +25,7 @@ public class JobProcessor extends AbstractProcessor {
     public static final String PROCESSOR_NAME = "@" + JobProcessor.class.getSimpleName();
 
     private ErrorReporter mErrorReporter;
+    private Logger mLogger;
     private ProcessingEnvironment mProcessingEnvironment;
 
     @Override
@@ -33,6 +34,7 @@ public class JobProcessor extends AbstractProcessor {
 
         mProcessingEnvironment = processingEnv;
         mErrorReporter = new ErrorReporter(processingEnv);
+        mLogger = new Logger(processingEnv);
     }
 
     @Override
@@ -47,6 +49,9 @@ public class JobProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        final long startTime = System.currentTimeMillis();
+        mLogger.note(String.format("worker compiler started processing on %d elements..", annotations.size()));
+
         final Collection<? extends Element> annotatedElements =
                 roundEnv.getElementsAnnotatedWith(JobExtra.class);
         final JobClassInfo jobClassInfo = new JobClassInfo();
@@ -75,8 +80,9 @@ public class JobProcessor extends AbstractProcessor {
             String trace = Throwables.getStackTraceAsString(e);
             mErrorReporter.reportError(PROCESSOR_NAME + "processor threw an exception: " + trace);
         }
+        mLogger.note(String.format("worker compiler finished in %dms", System.currentTimeMillis() - startTime));
 
-        return false;
+        return true;
     }
 
     private JobExtraClassInfo processElement(Element element) {
