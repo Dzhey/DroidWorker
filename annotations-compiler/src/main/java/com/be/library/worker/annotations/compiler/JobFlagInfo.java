@@ -31,7 +31,7 @@ public class JobFlagInfo extends FieldInfo {
         mIsOptional = annotation.optional();
 
         if (Strings.isNullOrEmpty(annotation.value())) {
-            mVariableKey = JobProcessor.EXTRA_ANNOTATION_PRINTABLE +
+            mVariableKey = JobProcessor.FLAG_ANNOTATION_PRINTABLE +
                     "_" +
                     getSimpleJobName() +
                     "_" +

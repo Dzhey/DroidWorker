@@ -58,6 +58,7 @@ public class JobProcessor extends AbstractProcessor {
 
         try {
             processExtraElements(jobClassInfo, roundEnv);
+            processFlagElements(jobClassInfo, roundEnv);
 
             final JobExtraInjectorGenerator generator =
                     new JobExtraInjectorGenerator(mProcessingEnvironment);

@@ -3,7 +3,9 @@ package com.be.library.worker.annotations.compiler;
 import com.be.library.worker.annotations.JobExtra;
 import com.be.library.worker.annotations.compiler.statements.AddExtraStatementBuilder;
 import com.be.library.worker.annotations.compiler.statements.ForkJoinJobExtraSetterBuilder;
+import com.be.library.worker.annotations.compiler.statements.ForkJoinJobFlagSetterBuilder;
 import com.be.library.worker.annotations.compiler.statements.JobExtraSetterBuilder;
+import com.be.library.worker.annotations.compiler.statements.JobFlagSetterBuilder;
 import com.be.library.worker.annotations.compiler.statements.SetFlagStatementBuilder;
 import com.google.common.collect.Iterables;
 import com.squareup.javapoet.FieldSpec;
@@ -129,7 +131,13 @@ public class JobExtraInjectorGenerator {
                 jobParamsTypeName, VAR_PARAMS, ARG_JOB);
 
         for (FieldInfo info : extrasInfo) {
-            JobExtraSetterBuilder.of(ARG_JOB, VAR_PARAMS).buildStatements(injectParamsSpecBuilder, info);
+            if (info.getFieldAnnotationType().equals(JobExtra.class)) {
+                JobExtraSetterBuilder.of(ARG_JOB, VAR_PARAMS)
+                        .buildStatements(injectParamsSpecBuilder, info);
+            } else {
+                JobFlagSetterBuilder.of(ARG_JOB, VAR_PARAMS)
+                        .buildStatements(injectParamsSpecBuilder, info);
+            }
         }
 
         return injectParamsSpecBuilder.build();
@@ -144,7 +152,13 @@ public class JobExtraInjectorGenerator {
                 .returns(void.class);
 
         for (FieldInfo info : extrasInfo) {
-            ForkJoinJobExtraSetterBuilder.of(ARG_JOB).buildStatements(injectParamsSpecBuilder, info);
+            if (info.getFieldAnnotationType().equals(JobExtra.class)) {
+                ForkJoinJobExtraSetterBuilder.of(ARG_JOB)
+                        .buildStatements(injectParamsSpecBuilder, info);
+            } else {
+                ForkJoinJobFlagSetterBuilder.of(ARG_JOB)
+                        .buildStatements(injectParamsSpecBuilder, info);
+            }
         }
 
         return injectParamsSpecBuilder.build();

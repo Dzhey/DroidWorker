@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import com.be.android.library.worker.jobs.LoadJob;
 import com.be.android.library.worker.models.LoadJobResult;
 import com.be.library.worker.annotations.JobExtra;
+import com.be.library.worker.annotations.JobFlag;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +16,12 @@ public class SimpleImageLoaderJob extends LoadJob {
 
     @JobExtra
     String mImageUrl;
+
+    @JobExtra(optional = true)
+    int mDelayMillis = 4000;
+
+    @JobFlag
+    boolean mUseDelay = true;
 
     public SimpleImageLoaderJob() {
     }
@@ -31,7 +38,9 @@ public class SimpleImageLoaderJob extends LoadJob {
         final URL url = new URL(mImageUrl);
 
         // Synthetic delay
-        Thread.sleep(4000);
+        if (mUseDelay) {
+            Thread.sleep(mDelayMillis);
+        }
 
         final InputStream mConn = url.openStream();
         try {

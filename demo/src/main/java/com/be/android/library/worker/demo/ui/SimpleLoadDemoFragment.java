@@ -59,7 +59,7 @@ public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvide
                 // Use JobManager.JOB_GROUP_UNIQUE to execute job asynchronously
                 // and prevent other jobs from having to wait for completion of this job
                 .group(JobManager.JOB_GROUP_UNIQUE)
-                .configure(SimpleImageLoaderJobExtras.captureExtras(IMG_URL))
+                .configure(SimpleImageLoaderJobExtras.captureExtras(IMG_URL, 2000, true))
                 .getJob();
     }
 
