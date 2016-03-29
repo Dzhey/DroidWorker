@@ -9,4 +9,5 @@ public final class Consts {
     public static final String JOB_PARAMS_TYPE = "com.be.android.library.worker.models.JobParams";
     public static final String JOB_CONFIGURATOR = "com.be.android.library.worker.base.JobConfigurator";
     public static final String JOB_CONFIGURATOR_DELEGATE = "com.be.android.library.worker.base.JobConfigurator.Delegate";
+    public static final String JOB_TYPE_FORK_JOIN = "com.be.android.library.worker.base.ForkJoinJob";
 }

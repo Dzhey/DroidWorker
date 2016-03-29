@@ -1,24 +1,32 @@
 package com.be.library.worker.annotations.compiler;
 
-import com.be.library.worker.annotations.JobExtra;
+import com.be.library.worker.annotations.JobFlag;
 import com.google.common.base.Strings;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 
-public class JobExtraInfo extends FieldInfo {
+public class JobFlagInfo extends FieldInfo {
 
-    private static final String KEY_PREFIX = "EXTRA_";
+    private static final String KEY_PREFIX = "FLAG_";
 
     private final boolean mIsOptional;
     private final String mVariableKey;
 
-    public JobExtraInfo(VariableElement variableElement,
+    public JobFlagInfo(VariableElement variableElement,
                         ProcessingEnvironment env) throws IllegalArgumentException {
 
         super(variableElement, env);
 
-        final JobExtra annotation = variableElement.getAnnotation(JobExtra.class);
+        final ErrorReporter errorReporter = new ErrorReporter(env);
+
+        if (!variableElement.asType().getKind().equals(TypeKind.BOOLEAN)) {
+            errorReporter.abortWithError(String.format("flag '%s' value can only be 'boolean'",
+                    variableElement.getSimpleName().toString()));
+        }
+
+        final JobFlag annotation = variableElement.getAnnotation(JobFlag.class);
 
         mIsOptional = annotation.optional();
 
@@ -50,6 +58,6 @@ public class JobExtraInfo extends FieldInfo {
 
     @Override
     public Class<?> getFieldAnnotationType() {
-        return JobExtra.class;
+        return JobFlag.class;
     }
 }

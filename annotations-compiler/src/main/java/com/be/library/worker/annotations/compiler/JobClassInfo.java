@@ -12,24 +12,24 @@ import java.util.Map;
 
 public class JobClassInfo {
 
-    private final Multimap<String, JobExtraInfo> mJobInfo;
+    private final Multimap<String, FieldInfo> mJobInfo;
 
     public JobClassInfo() {
         mJobInfo = Multimaps.newListMultimap(
-                new HashMap<String, Collection<JobExtraInfo>>(),
-                new Supplier<List<JobExtraInfo>>() {
+                new HashMap<String, Collection<FieldInfo>>(),
+                new Supplier<List<FieldInfo>>() {
                     @Override
-                    public List<JobExtraInfo> get() {
+                    public List<FieldInfo> get() {
                         return Lists.newArrayList();
                     }
                 });
     }
 
-    public void registerJobExtraInfo(JobExtraInfo info) {
+    public void registerJobExtraInfo(FieldInfo info) {
         mJobInfo.put(info.getQualifiedJobName(), info);
     }
 
-    public Map<String, Collection<JobExtraInfo>> getClassesInfo() {
+    public Map<String, Collection<FieldInfo>> getClassesInfo() {
         return Multimaps.asMap(mJobInfo);
     }
 }

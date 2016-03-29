@@ -78,7 +78,7 @@ public class JobProcessor extends AbstractProcessor {
 
         for (Element element : annotatedElements) {
             try {
-                classInfo.registerJobExtraInfo(processExtraElement(element));
+                classInfo.registerJobExtraInfo(processFlagElement(element));
 
             } catch (AbortProcessingException e) {
                 // We abandoned this type; continue with the next.
@@ -126,7 +126,7 @@ public class JobProcessor extends AbstractProcessor {
         return new JobExtraInfo(variableElement, mProcessingEnvironment);
     }
 
-    private JobExtraInfo processFlagElement(Element element) {
+    private JobFlagInfo processFlagElement(Element element) {
         final JobFlag jobFlag = element.getAnnotation(JobFlag.class);
         if (jobFlag == null) {
             mErrorReporter.abortWithError("annotation processor for " +
@@ -141,6 +141,6 @@ public class JobProcessor extends AbstractProcessor {
 
         final VariableElement variableElement = (VariableElement) element;
 
-        return new JobExtraInfo(variableElement, mProcessingEnvironment);
+        return new JobFlagInfo(variableElement, mProcessingEnvironment);
     }
 }

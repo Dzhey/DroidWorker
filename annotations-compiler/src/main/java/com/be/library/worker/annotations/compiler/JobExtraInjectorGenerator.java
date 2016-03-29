@@ -1,6 +1,10 @@
 package com.be.library.worker.annotations.compiler;
 
-import com.google.common.base.CaseFormat;
+import com.be.library.worker.annotations.JobExtra;
+import com.be.library.worker.annotations.compiler.statements.AddExtraStatementBuilder;
+import com.be.library.worker.annotations.compiler.statements.ForkJoinJobExtraSetterBuilder;
+import com.be.library.worker.annotations.compiler.statements.JobExtraSetterBuilder;
+import com.be.library.worker.annotations.compiler.statements.SetFlagStatementBuilder;
 import com.google.common.collect.Iterables;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
@@ -34,21 +38,13 @@ public class JobExtraInjectorGenerator {
     }
 
     public void generateCode(JobClassInfo info) throws IOException {
-        for (Map.Entry<String, Collection<JobExtraInfo>> entry : info.getClassesInfo().entrySet()) {
+        for (Map.Entry<String, Collection<FieldInfo>> entry : info.getClassesInfo().entrySet()) {
             generateInjector(entry.getKey(), entry.getValue());
         }
     }
 
-    private String makeFieldNameForKey(String extraVariableName) {
-        if (extraVariableName.length() > 0 && extraVariableName.toUpperCase().startsWith("M")) {
-            extraVariableName = extraVariableName.substring(1, extraVariableName.length());
-        }
-
-        return "EXTRA_" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, extraVariableName);
-    }
-
-    private void generateInjector(String qualifiedJobName, Collection<JobExtraInfo> extras) throws IOException {
-        final JobExtraInfo firstEntry = Iterables.get(extras, 0);
+    private void generateInjector(String qualifiedJobName, Collection<FieldInfo> extras) throws IOException {
+        final FieldInfo firstEntry = Iterables.get(extras, 0);
         final String injectorClassName = firstEntry.getSimpleJobName() + SUFFIX;
         final String packageName = firstEntry.getPackageName();
         final TypeName jobTypeName = TypeVariableName.get(qualifiedJobName);
@@ -61,9 +57,9 @@ public class JobExtraInjectorGenerator {
                 .addMethod(makeCaptureExtrasMethodSpec(extras))
                 .addMethod(makeInjectExtrasMethodSpec(jobTypeName, extras));
 
-        for (JobExtraInfo info : extras) {
+        for (FieldInfo info : extras) {
             classSpecBuilder.addField(FieldSpec.builder(String.class,
-                    makeFieldNameForKey(info.getVariableName()),
+                    info.makeKeyFieldName(),
                     Modifier.PUBLIC,
                     Modifier.STATIC,
                     Modifier.FINAL)
@@ -77,15 +73,17 @@ public class JobExtraInjectorGenerator {
         javaFile.writeTo(mProcessingEnvironment.getFiler());
     }
 
-    private MethodSpec makeCaptureExtrasMethodSpec(Collection<JobExtraInfo> extrasInfo) {
+    private MethodSpec makeCaptureExtrasMethodSpec(Collection<FieldInfo> extrasInfo) {
         final TypeName delegateTypeName = TypeVariableName.get(Consts.JOB_CONFIGURATOR_DELEGATE);
         final MethodSpec.Builder captureExtrasSpecBuilder = MethodSpec.methodBuilder("captureExtras")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .returns(delegateTypeName);
 
-        for (JobExtraInfo info : extrasInfo) {
-            final TypeName varTypeName = TypeVariableName.get(info.getVariableType());
-            captureExtrasSpecBuilder.addParameter(varTypeName, info.getVariableName(), Modifier.FINAL);
+        for (FieldInfo info : extrasInfo) {
+            captureExtrasSpecBuilder.addParameter(
+                    TypeVariableName.get(info.getVariableTypeName()),
+                    info.getVariableSimpleName(),
+                    Modifier.FINAL);
         }
 
         final String configuratorArgName = "configurator";
@@ -95,11 +93,14 @@ public class JobExtraInjectorGenerator {
                 .addParameter(TypeVariableName.get(Consts.JOB_CONFIGURATOR), configuratorArgName)
                 .returns(void.class);
 
-        for (JobExtraInfo info : extrasInfo) {
-            delegateMethodSpecBuilder.addStatement("$L.addExtra($L, $L)",
-                    configuratorArgName,
-                    makeFieldNameForKey(info.getVariableName()),
-                    info.getVariableName());
+        for (FieldInfo info : extrasInfo) {
+            if (info.getFieldAnnotationType().equals(JobExtra.class)) {
+                AddExtraStatementBuilder.of(configuratorArgName)
+                        .buildStatements(delegateMethodSpecBuilder, info);
+            } else {
+                SetFlagStatementBuilder.of(configuratorArgName)
+                        .buildStatements(delegateMethodSpecBuilder, info);
+            }
         }
 
         final TypeSpec.Builder delegateSpecBuilder = TypeSpec.anonymousClassBuilder("")
@@ -112,7 +113,7 @@ public class JobExtraInjectorGenerator {
         return captureExtrasSpecBuilder.build();
     }
 
-    private MethodSpec makeInjectExtrasMethodSpec(TypeName jobTypeName, Collection<JobExtraInfo> extrasInfo) {
+    private MethodSpec makeInjectExtrasMethodSpec(TypeName jobTypeName, Collection<FieldInfo> extrasInfo) {
         if (Iterables.get(extrasInfo, 0).isForkJoinJob()) {
             return makeForkJoinInjectExtrasMethodSpec(jobTypeName, extrasInfo);
         }
@@ -127,93 +128,23 @@ public class JobExtraInjectorGenerator {
         injectParamsSpecBuilder.addStatement("final $T $L = $L.getParams()",
                 jobParamsTypeName, VAR_PARAMS, ARG_JOB);
 
-        for (JobExtraInfo info : extrasInfo) {
-            final String extraFieldName = makeFieldNameForKey(info.getVariableName());
-
-            injectParamsSpecBuilder.beginControlFlow("if ($L.hasExtra($L))",
-                    VAR_PARAMS, extraFieldName);
-
-            final TypeName extraParamTypeName = TypeVariableName.get(info.getVariableType());
-
-            injectParamsSpecBuilder.beginControlFlow("try");
-            injectParamsSpecBuilder.addStatement("$L.$L = ($T) $L.getExtra($L)",
-                    ARG_JOB,
-                    info.getVariableName(),
-                    extraParamTypeName,
-                    VAR_PARAMS,
-                    extraFieldName);
-            injectParamsSpecBuilder.endControlFlow();
-            injectParamsSpecBuilder.beginControlFlow("catch ($T e)", ClassCastException.class);
-            injectParamsSpecBuilder.addStatement("throw new $T($S + \"\\\"\" + \n$L.getExtra($L).getClass().getName() + \"\\\"\")",
-                    RuntimeException.class,
-                    String.format("Failed to inject extra \"%s\" to \"%s\". Expected type \"%s\", but got ",
-                            info.getVariableName(),
-                            info.getSimpleJobName(),
-                            extraParamTypeName),
-                    VAR_PARAMS,
-                    extraFieldName);
-            injectParamsSpecBuilder.endControlFlow();
-            injectParamsSpecBuilder.endControlFlow();
-
-            if (!info.isOptional()) {
-                injectParamsSpecBuilder.beginControlFlow("else");
-                injectParamsSpecBuilder.addStatement("throw new $T($S)",
-                        IllegalArgumentException.class,
-                        String.format("Failed to inject extras to \"%s\". Required value \"%s\" not found in job params.",
-                                info.getSimpleJobName(),
-                                info.getVariableName()));
-                injectParamsSpecBuilder.endControlFlow();
-            }
+        for (FieldInfo info : extrasInfo) {
+            JobExtraSetterBuilder.of(ARG_JOB, VAR_PARAMS).buildStatements(injectParamsSpecBuilder, info);
         }
 
         return injectParamsSpecBuilder.build();
     }
 
     private MethodSpec makeForkJoinInjectExtrasMethodSpec(
-            TypeName jobTypeName, Collection<JobExtraInfo> extrasInfo) {
+            TypeName jobTypeName, Collection<FieldInfo> extrasInfo) {
 
         final MethodSpec.Builder injectParamsSpecBuilder = MethodSpec.methodBuilder("injectExtras")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addParameter(jobTypeName, ARG_JOB)
                 .returns(void.class);
 
-        for (JobExtraInfo info : extrasInfo) {
-            final String extraFieldName = makeFieldNameForKey(info.getVariableName());
-
-            injectParamsSpecBuilder.beginControlFlow("if ($L.hasExtra($L))",
-                    ARG_JOB, extraFieldName);
-
-            final TypeName extraParamTypeName = TypeVariableName.get(info.getVariableType());
-
-            injectParamsSpecBuilder.beginControlFlow("try");
-            injectParamsSpecBuilder.addStatement("$L.$L = ($T) $L.findExtra($L)",
-                    ARG_JOB,
-                    info.getVariableName(),
-                    extraParamTypeName,
-                    ARG_JOB,
-                    extraFieldName);
-            injectParamsSpecBuilder.endControlFlow();
-            injectParamsSpecBuilder.beginControlFlow("catch ($T e)", ClassCastException.class);
-            injectParamsSpecBuilder.addStatement("throw new $T($S + \"\\\"\" + \n$L.findExtra($L).getClass().getName() + \"\\\"\")",
-                    RuntimeException.class,
-                    String.format("Failed to inject extra \"%s\" to \"%s\". Expected type \"%s\", but got ",
-                            info.getVariableName(),
-                            info.getSimpleJobName(),
-                            extraParamTypeName),
-                    ARG_JOB,
-                    extraFieldName);
-            injectParamsSpecBuilder.endControlFlow();
-            injectParamsSpecBuilder.endControlFlow();
-
-            if (!info.isOptional()) {
-                injectParamsSpecBuilder.beginControlFlow("else");
-                injectParamsSpecBuilder.addStatement("throw new $T($S)",
-                        IllegalArgumentException.class,
-                        String.format("Failed to inject extras to \"%s\". Required value \"%s\" not found in job params.",
-                                info.getSimpleJobName(),
-                                info.getVariableName()));
-                injectParamsSpecBuilder.endControlFlow();
-            }
+        for (FieldInfo info : extrasInfo) {
+            ForkJoinJobExtraSetterBuilder.of(ARG_JOB).buildStatements(injectParamsSpecBuilder, info);
         }
 
         return injectParamsSpecBuilder.build();
