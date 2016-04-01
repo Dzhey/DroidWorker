@@ -5,8 +5,12 @@ import com.be.library.worker.annotations.JobFlag;
 import com.google.auto.service.AutoService;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
+import java.lang.annotation.AnnotationTypeMismatchException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -29,6 +33,8 @@ public class JobProcessor extends AbstractProcessor {
     private ErrorReporter mErrorReporter;
     private Logger mLogger;
     private ProcessingEnvironment mProcessingEnvironment;
+    private List<Element> mDeferredExtraElements;
+    private List<Element> mDeferredFlagElements;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -37,6 +43,8 @@ public class JobProcessor extends AbstractProcessor {
         mProcessingEnvironment = processingEnv;
         mErrorReporter = new ErrorReporter(processingEnv);
         mLogger = new Logger(processingEnv);
+        mDeferredExtraElements = Lists.newArrayList();
+        mDeferredFlagElements = Lists.newArrayList();
     }
 
     @Override
@@ -54,11 +62,36 @@ public class JobProcessor extends AbstractProcessor {
         final long startTime = System.currentTimeMillis();
         mLogger.note(String.format("worker compiler started processing on %d elements..", annotations.size()));
 
+        if (roundEnv.processingOver()) {
+            for (Element element : mDeferredExtraElements) {
+                mErrorReporter.reportError("Did not generate injector for " + element.toString()
+                        + " because it references undefined types", element);
+            }
+            for (Element element : mDeferredFlagElements) {
+                mErrorReporter.reportError("Did not generate injector for " + element.toString()
+                        + " because it references undefined types", element);
+            }
+
+            return false;
+        }
+
         final JobClassInfo jobClassInfo = new JobClassInfo();
+        Collection<? extends Element> extraElements =
+                roundEnv.getElementsAnnotatedWith(JobExtra.class);
+        Collection<? extends Element> flagElements =
+                roundEnv.getElementsAnnotatedWith(JobFlag.class);
+        if (!mDeferredExtraElements.isEmpty()) {
+            extraElements = Lists.newArrayList(Iterables.concat(extraElements, mDeferredExtraElements));
+            mDeferredExtraElements.clear();
+        }
+        if (!mDeferredFlagElements.isEmpty()) {
+            flagElements = Lists.newArrayList(Iterables.concat(flagElements, mDeferredFlagElements));
+            mDeferredFlagElements.clear();
+        }
 
         try {
-            processExtraElements(jobClassInfo, roundEnv);
-            processFlagElements(jobClassInfo, roundEnv);
+            processExtraElements(jobClassInfo, extraElements);
+            processFlagElements(jobClassInfo, flagElements);
 
             final JobExtraInjectorGenerator generator =
                     new JobExtraInjectorGenerator(mProcessingEnvironment);
@@ -66,23 +99,23 @@ public class JobProcessor extends AbstractProcessor {
 
         } catch (Exception e) {
             String trace = Throwables.getStackTraceAsString(e);
-            mErrorReporter.reportError(PROCESSOR_NAME + "processor threw an exception: " + trace);
+            mErrorReporter.reportError(PROCESSOR_NAME + " threw an exception: " + trace);
         }
         mLogger.note(String.format("worker compiler finished in %dms", System.currentTimeMillis() - startTime));
 
-        return true;
+        return false;
     }
 
-    private void processFlagElements(JobClassInfo classInfo, RoundEnvironment roundEnv) {
-        final Collection<? extends Element> annotatedElements =
-                roundEnv.getElementsAnnotatedWith(JobFlag.class);
-
-        for (Element element : annotatedElements) {
+    private void processFlagElements(JobClassInfo classInfo, Collection<? extends Element> elements) {
+        for (Element element : elements) {
             try {
                 classInfo.registerJobExtraInfo(processFlagElement(element));
 
             } catch (AbortProcessingException e) {
                 // We abandoned this type; continue with the next.
+
+            } catch (AnnotationTypeMismatchException e) {
+                mDeferredFlagElements.add(element);
 
             } catch (Exception e) {
                 String trace = Throwables.getStackTraceAsString(e);
@@ -91,16 +124,17 @@ public class JobProcessor extends AbstractProcessor {
         }
     }
 
-    private void processExtraElements(JobClassInfo classInfo, RoundEnvironment roundEnv) {
-        final Collection<? extends Element> annotatedElements =
-                roundEnv.getElementsAnnotatedWith(JobExtra.class);
-
-        for (Element element : annotatedElements) {
+    private void processExtraElements(JobClassInfo classInfo, Collection<? extends Element> elements) {
+        for (Element element : elements) {
             try {
                 classInfo.registerJobExtraInfo(processExtraElement(element));
 
             } catch (AbortProcessingException e) {
                 // We abandoned this type; continue with the next.
+
+            } catch (AnnotationTypeMismatchException e) {
+                mDeferredExtraElements.add(element);
+                throw e;
 
             } catch (Exception e) {
                 String trace = Throwables.getStackTraceAsString(e);
