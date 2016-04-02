@@ -48,6 +48,10 @@ public abstract class FieldInfo {
         }
     }
 
+    public void init() {
+        checkJobSuperclass(mJobTypeElement);
+    }
+
     public abstract String getVariableKey();
 
     public abstract boolean isOptional();
@@ -95,6 +99,14 @@ public abstract class FieldInfo {
         return TypeSimplifier.packageNameOf(mJobTypeElement);
     }
 
+    public String getQualifiedFieldName() {
+        return getQualifiedJobName() + "." + getVariableSimpleName();
+    }
+
+    public TypeElement getJobTypeElement() {
+        return mJobTypeElement;
+    }
+
     public boolean isForkJoinJob() {
         TypeMirror superType = mJobTypeElement.getSuperclass();
 
@@ -115,7 +127,7 @@ public abstract class FieldInfo {
         return false;
     }
 
-    private void checkJobSuperclass(TypeElement jobClassElement) {
+    protected void checkJobSuperclass(TypeElement jobClassElement) {
         final TypeMirror parent = jobClassElement.asType();
 
         if (!parent.getKind().equals(TypeKind.DECLARED)) {
@@ -124,13 +136,13 @@ public abstract class FieldInfo {
                     JobProcessor.EXTRA_ANNOTATION_PRINTABLE), jobClassElement);
         }
 
-        final TypeElement parentTypeElement = (TypeElement) ((DeclaredType) parent).asElement();
+        final TypeElement parentTypeElement = TypeSimplifier.toTypeElement(parent);
         if (!checkJobSuperclassImpl(parent)) {
             mErrorReporter.abortWithError(String.format(
-                    "%s should implement '%s' interface in order to user annotation '%s'",
+                    "%s should implement '%s' interface in order to use annotation '@%s'",
                     parentTypeElement.getQualifiedName(),
-                    Consts.JOB_INTERFACE_TYPE_NAME,
-                    JobProcessor.EXTRA_ANNOTATION_PRINTABLE), jobClassElement);
+                    getExpectedSuperclass(),
+                    getFieldAnnotationType().getSimpleName()), jobClassElement);
         }
     }
 
@@ -144,7 +156,7 @@ public abstract class FieldInfo {
                     .getQualifiedName()
                     .toString();
 
-            if (Consts.JOB_INTERFACE_TYPE_NAME.equals(qualifiedName)) {
+            if (getExpectedSuperclass().equals(qualifiedName)) {
                 return true;
             }
 
@@ -154,6 +166,10 @@ public abstract class FieldInfo {
         }
 
         return false;
+    }
+
+    protected String getExpectedSuperclass() {
+        return Consts.JOB_INTERFACE_TYPE_NAME;
     }
 }
 

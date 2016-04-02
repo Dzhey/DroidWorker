@@ -157,6 +157,10 @@ final class TypeSimplifier {
         }
     }
 
+    static TypeElement toTypeElement(TypeMirror typeMirror) {
+        return ((TypeElement) ((DeclaredType) typeMirror).asElement());
+    }
+
     static TypeElement enclosingClass(Element elem) {
         Element result;
         Element encl;

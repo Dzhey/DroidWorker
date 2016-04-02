@@ -10,11 +10,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.processing.ProcessingEnvironment;
+
 public class JobClassInfo {
 
+    private final ProcessingEnvironment mProcEnv;
+    private final ErrorReporter mErrorReporter;
     private final Multimap<String, FieldInfo> mJobInfo;
 
-    public JobClassInfo() {
+    public JobClassInfo(ProcessingEnvironment env) {
+        mProcEnv = env;
+        mErrorReporter = new ErrorReporter(env);
         mJobInfo = Multimaps.newListMultimap(
                 new HashMap<String, Collection<FieldInfo>>(),
                 new Supplier<List<FieldInfo>>() {

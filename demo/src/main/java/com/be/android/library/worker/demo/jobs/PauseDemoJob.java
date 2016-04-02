@@ -2,15 +2,18 @@ package com.be.android.library.worker.demo.jobs;
 
 import android.os.SystemClock;
 import android.util.Log;
-import android.widget.Chronometer;
 
 import com.be.android.library.worker.base.BaseJob;
 import com.be.android.library.worker.base.JobEvent;
-import com.be.android.library.worker.demo.App;
+import com.be.library.worker.annotations.Inherited;
 
+@Inherited(SimpleImageLoaderJob.class)
 public class PauseDemoJob extends BaseJob {
 
     private static final String LOG_TAG = PauseDemoJob.class.getSimpleName();
+
+    @Inherited
+    String mImageUrl;
 
     @Override
     protected JobEvent executeImpl() throws Exception {
