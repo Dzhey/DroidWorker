@@ -2,9 +2,6 @@ package com.be.library.worker.annotations.compiler;
 
 import com.be.library.worker.annotations.Inherited;
 import com.google.common.base.CaseFormat;
-import com.google.common.collect.Lists;
-
-import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
@@ -14,7 +11,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
 public abstract class FieldInfo {
@@ -182,59 +178,6 @@ public abstract class FieldInfo {
         }
 
         return Consts.JOB_INTERFACE_TYPE_NAME;
-    }
-
-    private VariableElement findParentField(TypeElement jobType, String fieldName, List<String> visitedJobTypes) {
-        // Resolve cyclic field inheritance
-        if (visitedJobTypes == null) {
-            visitedJobTypes = Lists.newArrayList();
-        }
-        visitedJobTypes.add(jobType.getQualifiedName().toString());
-        if (visitedJobTypes.size() > 1) {
-            final int sz = visitedJobTypes.size();
-            for (int index = 0; index < sz; index++) {
-                final String currentTypeName = visitedJobTypes.get(index);
-
-                for (int j = index + 1; j < sz; j++) {
-                    if (currentTypeName.equals(visitedJobTypes.get(j))) {
-                        mErrorReporter.abortWithError(
-                                String.format("Failed to resolve field \"%s\" inheritance. " +
-                                                "Found cyclic reference between \"%s\" and \"%s\" fields. " +
-                                                "Which one should inherit another?",
-                                        fieldName,
-                                        currentTypeName,
-                                        visitedJobTypes.get(j - 1)));
-                    }
-                }
-            }
-        }
-
-        final TypeElement parentJobType = extractParentJobType(jobType);
-        final List<VariableElement> jobFields = ElementFilter.fieldsIn(parentJobType.getEnclosedElements());
-        for (VariableElement field : jobFields) {
-            if (field.getSimpleName().toString().equals(fieldName)) {
-                if (field.getAnnotation(Inherited.class) != null) {
-                    // Search for annotated field in next parent..
-                    return findParentField(parentJobType, fieldName, visitedJobTypes);
-                }
-
-                return field;
-            }
-        }
-
-        return null;
-    }
-
-    private TypeElement extractParentJobType(TypeElement inheritorJobType) {
-        final Inherited jobAnnotation = inheritorJobType.getAnnotation(Inherited.class);
-        if (jobAnnotation == null) {
-            mErrorReporter.abortWithError(String.format("Missing @%s annotation in \"%s\" declaration",
-                    Inherited.class.getSimpleName(),
-                    inheritorJobType.getQualifiedName()));
-            assert false;
-        }
-
-        return extractJobType(jobAnnotation);
     }
 
     private TypeElement extractJobType(Inherited annotation) {

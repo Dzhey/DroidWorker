@@ -5,15 +5,10 @@ import android.util.Log;
 
 import com.be.android.library.worker.base.BaseJob;
 import com.be.android.library.worker.base.JobEvent;
-import com.be.library.worker.annotations.Inherited;
 
-@Inherited(SimpleImageLoaderJob.class)
 public class PauseDemoJob extends BaseJob {
 
     private static final String LOG_TAG = PauseDemoJob.class.getSimpleName();
-
-    @Inherited
-    String mImageUrl;
 
     @Override
     protected JobEvent executeImpl() throws Exception {

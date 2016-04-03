@@ -5,20 +5,11 @@ import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.demo.model.MultiloadDemoEntry;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.models.LoadJobResult;
-import com.be.library.worker.annotations.Inherited;
-import com.be.library.worker.annotations.JobFlag;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Inherited(LoadListEntryJob.class)
 public class LoadListEntriesJob extends ForkJoinJob {
-
-    @Inherited
-    String mImageUrl;
-
-    @JobFlag
-    boolean mUseDelay = true;
 
     @Override
     protected LoadJobResult<List<MultiloadDemoEntry>> executeImpl() throws Exception {

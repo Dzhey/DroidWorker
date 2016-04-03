@@ -19,15 +19,13 @@ import com.be.android.library.worker.annotations.OnJobSuccess;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.demo.R;
 import com.be.android.library.worker.demo.jobs.SimpleImageLoaderJob;
+import com.be.android.library.worker.demo.jobs.SimpleImageLoaderJobExtras;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.demo.ui.base.TitleProvider;
 import com.be.android.library.worker.interfaces.Job;
 import com.be.android.library.worker.models.LoadJobResult;
 import com.be.android.library.worker.util.JobSelector;
-import com.be.library.worker.annotations.Inherited;
 
-
-@Inherited
 public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvider {
 
     private static final String TAG_IMAGE_LOADER = "SimpleLoadDemoFragment_loader";
@@ -36,9 +34,6 @@ public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvide
 
     private ProgressBar mProgressBar;
     private ImageView mImageView;
-
-    @Inherited
-    String mTestTest;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -64,7 +59,7 @@ public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvide
                 // Use JobManager.JOB_GROUP_UNIQUE to execute job asynchronously
                 // and prevent other jobs from having to wait for completion of this job
                 .group(JobManager.JOB_GROUP_UNIQUE)
-//                .configure(SimpleImageLoaderJobExtras.captureExtras(IMG_URL, 2000, true))
+                .configure(SimpleImageLoaderJobExtras.captureExtras(IMG_URL, 2000, true))
                 .getJob();
     }
 

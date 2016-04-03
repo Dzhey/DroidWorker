@@ -5,19 +5,11 @@ import android.util.Log;
 import com.be.android.library.worker.demo.model.MultiloadDemoEntry;
 import com.be.android.library.worker.jobs.LoadJob;
 import com.be.android.library.worker.models.LoadJobResult;
-import com.be.library.worker.annotations.Inherited;
 
-@Inherited(SimpleImageLoaderJob.class)
 public class LoadListEntryJob extends LoadJob {
 
     private static final String LOG_TAG = LoadListEntryJob.class.getSimpleName();
     private final int mListEntryId;
-
-    @Inherited
-    String mImageUrl;
-
-    @Inherited
-    boolean mUseDelay = true;
 
     public LoadListEntryJob(int listEntryId) {
         mListEntryId = listEntryId;

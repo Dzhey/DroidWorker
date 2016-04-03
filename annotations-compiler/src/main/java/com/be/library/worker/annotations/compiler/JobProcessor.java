@@ -89,7 +89,7 @@ public class JobProcessor extends AbstractProcessor {
         try {
             processExtraElements(jobClassInfo, extraElements);
             processFlagElements(jobClassInfo, flagElements);
-            processInheritedElements(jobClassInfo, roundEnv.getElementsAnnotatedWith(Inherited.class));
+//            processInheritedElements(roundEnv.getElementsAnnotatedWith(Inherited.class));
 
             final JobExtraInjectorGenerator generator =
                     new JobExtraInjectorGenerator(mProcessingEnvironment);
@@ -107,7 +107,8 @@ public class JobProcessor extends AbstractProcessor {
         return false;
     }
 
-    private void processInheritedElements(JobClassInfo classInfo, Collection<? extends Element> elements) {
+    private void processInheritedElements(Collection<? extends Element> elements) {
+        // Check that each @Inherited class has inherited field
         for (Element element : elements) {
             try {
                 if (element.getKind() == ElementKind.CLASS) {
@@ -128,8 +129,6 @@ public class JobProcessor extends AbstractProcessor {
                     }
                     continue;
                 }
-
-                classInfo.registerJobExtraInfo(processInheritedElement(element));
 
             } catch (AbortProcessingException e) {
                 // We abandoned this type; continue with the next.
@@ -188,28 +187,6 @@ public class JobProcessor extends AbstractProcessor {
 
         final JobExtraInfo info = new JobExtraInfo(variableElement, mProcessingEnvironment);
 
-        info.init();
-
-        return info;
-    }
-
-    private inheritableFieldInfo processInheritedElement(Element element) {
-        final Inherited inherited = element.getAnnotation(Inherited.class);
-        if (inherited == null) {
-            mErrorReporter.abortWithError("annotation processor for " +
-                    INHERITED_ANNOTATION_PRINTABLE +
-                    " was invoked with a type"+
-                    " that does not have that annotation; this is probably a compiler bug", element);
-        }
-
-        if (element.getKind() != ElementKind.FIELD) {
-            mErrorReporter.abortWithError(FLAG_ANNOTATION_PRINTABLE +
-                    " only applies to fields and classes", element);
-        }
-
-        final VariableElement variableElement = (VariableElement) element;
-
-        final inheritableFieldInfo info = new inheritableFieldInfo(variableElement, mProcessingEnvironment);
         info.init();
 
         return info;

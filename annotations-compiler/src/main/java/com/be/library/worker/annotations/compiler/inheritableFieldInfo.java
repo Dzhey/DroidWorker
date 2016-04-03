@@ -12,55 +12,36 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.util.ElementFilter;
 
-public class inheritableFieldInfo extends FieldInfo {
+public abstract class InheritableFieldInfo extends FieldInfo {
 
     private final ProcessingEnvironment mProcEnv;
     private final ErrorReporter mErrorReporter;
-    private final String mVariableKey;
-    private final boolean mIsOptional;
-    private final String mKeyPrefix;
-    private final Class<?> mFieldAnnotationType;
+    private String mVariableKey;
+    private String mKeyPrefix;
+    private boolean mIsOptional;
 
-    public inheritableFieldInfo(VariableElement variableElement,
+    public InheritableFieldInfo(VariableElement variableElement,
                                 ProcessingEnvironment env) throws IllegalArgumentException {
 
         super(variableElement, env);
 
         mProcEnv = env;
         mErrorReporter = new ErrorReporter(env);
+    }
 
-        checkJobSuperclass(getJobTypeElement());
+    @Override
+    public void init() {
+        super.init();
 
-        final Inherited annotation = variableElement.getAnnotation(Inherited.class);
-
-        String classTypeName;
-        try {
-            classTypeName = annotation.value().getName();
-
-        } catch (MirroredTypeException e) {
-            try {
-                classTypeName = TypeSimplifier.toTypeElement(e.getTypeMirror())
-                        .getQualifiedName()
-                        .toString();
-            } catch (ClassCastException e2) {
-                classTypeName = "";
-            }
+        if (!isInherited()) {
+            return;
         }
 
-        if (!classTypeName.equals(Class.class.getName())) {
-            mErrorReporter.abortWithError(String.format("@%s field \"%s\" may not have declared " +
-                            "class. Please declare job class only within class-bounded @%s annotation.",
-                    Inherited.class.getSimpleName(),
-                    getQualifiedFieldName(),
-                    Inherited.class.getSimpleName()));
-        }
-
-        final TypeElement parentJobType = extractParentJobType(getJobTypeElement());
+        final TypeElement parentJobType = getParentJobType(getJobTypeElement());
         if (parentJobType.getQualifiedName().contentEquals(getQualifiedJobName())) {
             mErrorReporter.abortWithError(String.format("\"%s\" may not reference itself with \"@%s\" annotation",
                     getQualifiedJobName(),
                     Inherited.class.getSimpleName()));
-            assert false;
         }
 
         final VariableElement parentFieldElem = findParentField(getJobTypeElement(),
@@ -73,6 +54,7 @@ public class inheritableFieldInfo extends FieldInfo {
                     getQualifiedFieldName()));
             assert false;
         }
+
         final FieldInfo fieldInfo;
         if (parentFieldElem.getAnnotation(JobExtra.class) != null) {
             fieldInfo = new JobExtraInfo(parentFieldElem, mProcEnv);
@@ -81,14 +63,18 @@ public class inheritableFieldInfo extends FieldInfo {
         }
 
         mVariableKey = fieldInfo.getVariableKey();
-        mIsOptional = fieldInfo.isOptional();
         mKeyPrefix = fieldInfo.getVariableKeyPrefix();
-        mFieldAnnotationType = fieldInfo.getFieldAnnotationType();
+        mIsOptional = fieldInfo.isOptional();
     }
 
     @Override
     protected String getExpectedSuperclass() {
         return Consts.JOB_TYPE_FORK_JOIN;
+    }
+
+    @Override
+    public boolean isOptional() {
+        return mIsOptional;
     }
 
     private VariableElement findParentField(TypeElement jobType, String fieldName, List<String> visitedJobTypes) {
@@ -116,7 +102,7 @@ public class inheritableFieldInfo extends FieldInfo {
             }
         }
 
-        final TypeElement parentJobType = extractParentJobType(jobType);
+        final TypeElement parentJobType = getParentJobType(jobType);
         final List<VariableElement> jobFields = ElementFilter.fieldsIn(parentJobType.getEnclosedElements());
         for (VariableElement field : jobFields) {
             if (field.getSimpleName().toString().equals(fieldName)) {
@@ -132,16 +118,16 @@ public class inheritableFieldInfo extends FieldInfo {
         return null;
     }
 
-    private TypeElement extractParentJobType(TypeElement inheritorJobType) {
-        final Inherited jobAnnotation = inheritorJobType.getAnnotation(Inherited.class);
-        if (jobAnnotation == null) {
+    private TypeElement getParentJobType(TypeElement inheritorJobType) {
+        final Inherited annotation = inheritorJobType.getAnnotation(Inherited.class);
+        if (annotation == null) {
             mErrorReporter.abortWithError(String.format("Missing @%s annotation in \"%s\" declaration",
                     Inherited.class.getSimpleName(),
                     inheritorJobType.getQualifiedName()));
             assert false;
         }
 
-        return extractJobType(jobAnnotation);
+        return extractJobType(annotation);
     }
 
     private TypeElement extractJobType(Inherited annotation) {
@@ -156,7 +142,11 @@ public class inheritableFieldInfo extends FieldInfo {
 
         if (parentJobType == null || parentJobType.getQualifiedName().toString().equals(Class.class.getName())) {
             mErrorReporter.abortWithError(String.format(
-                    "unable to define parent for the field \"%s\"", getQualifiedFieldName()));
+                    "Unable to define parent for the field \"%s\". " +
+                            "Please define parent job class using @%s annotation applied to \"%s\".",
+                    getQualifiedFieldName(),
+                    Inherited.class.getSimpleName(),
+                    getQualifiedJobName()));
         }
 
         checkJobSuperclass(parentJobType);
@@ -170,17 +160,7 @@ public class inheritableFieldInfo extends FieldInfo {
     }
 
     @Override
-    public boolean isOptional() {
-        return mIsOptional;
-    }
-
-    @Override
     public String getVariableKeyPrefix() {
         return mKeyPrefix;
-    }
-
-    @Override
-    public Class<?> getFieldAnnotationType() {
-        return Inherited.class;
     }
 }
