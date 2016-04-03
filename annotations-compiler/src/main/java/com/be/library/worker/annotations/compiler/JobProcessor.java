@@ -193,7 +193,7 @@ public class JobProcessor extends AbstractProcessor {
         return info;
     }
 
-    private JobInheritedFieldInfo processInheritedElement(Element element) {
+    private inheritableFieldInfo processInheritedElement(Element element) {
         final Inherited inherited = element.getAnnotation(Inherited.class);
         if (inherited == null) {
             mErrorReporter.abortWithError("annotation processor for " +
@@ -209,7 +209,7 @@ public class JobProcessor extends AbstractProcessor {
 
         final VariableElement variableElement = (VariableElement) element;
 
-        final JobInheritedFieldInfo info = new JobInheritedFieldInfo(variableElement, mProcessingEnvironment);
+        final inheritableFieldInfo info = new inheritableFieldInfo(variableElement, mProcessingEnvironment);
         info.init();
 
         return info;

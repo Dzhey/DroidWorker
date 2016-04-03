@@ -12,7 +12,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.util.ElementFilter;
 
-public class JobInheritedFieldInfo extends FieldInfo {
+public class inheritableFieldInfo extends FieldInfo {
 
     private final ProcessingEnvironment mProcEnv;
     private final ErrorReporter mErrorReporter;
@@ -21,8 +21,8 @@ public class JobInheritedFieldInfo extends FieldInfo {
     private final String mKeyPrefix;
     private final Class<?> mFieldAnnotationType;
 
-    public JobInheritedFieldInfo(VariableElement variableElement,
-                                 ProcessingEnvironment env) throws IllegalArgumentException {
+    public inheritableFieldInfo(VariableElement variableElement,
+                                ProcessingEnvironment env) throws IllegalArgumentException {
 
         super(variableElement, env);
 
