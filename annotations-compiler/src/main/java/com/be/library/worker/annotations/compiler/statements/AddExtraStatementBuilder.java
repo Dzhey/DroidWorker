@@ -24,6 +24,6 @@ public class AddExtraStatementBuilder implements MethodStatementBuilder {
         specBuilder.addStatement( "$L.addExtra($L, $L)",
                 mArgConfigurator,
                 fieldInfo.makeKeyFieldName(),
-                fieldInfo.getVariableSimpleName());
+                fieldInfo.getVariableSimpleNameWithoutPrefix());
     }
 }

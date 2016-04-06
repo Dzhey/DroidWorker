@@ -64,15 +64,48 @@ public abstract class FieldInfo {
 
     public abstract boolean isInherited();
 
-    public String makeKeyFieldName() {
+    public String getVariableSimpleNameWithoutPrefix() {
+        final String varName = getVariableSimpleNameWithoutPrefixImpl();
+
+        if (varName.length() > 1 && Character.isUpperCase(varName.charAt(0))) {
+            return varName.substring(0, 1).toLowerCase() +
+                    varName.substring(1, varName.length());
+        }
+
+        return varName;
+    }
+
+    private String getVariableSimpleNameWithoutPrefixImpl() {
         String varName = getVariableSimpleName();
 
-        if (varName.length() > 0 && varName.toUpperCase().startsWith("M")) {
-            varName = varName.substring(1, varName.length());
+        if (varName.length() < 2) {
+            return varName;
         }
+
+        if (Character.isLowerCase(varName.charAt(0)) && Character.isUpperCase(varName.charAt(1))) {
+            return varName.substring(1, varName.length());
+        }
+
+        return varName;
+    }
+
+    public String makeKeyFieldName() {
+        String varName = getVariableSimpleNameWithoutPrefixImpl();
 
         return getVariableKeyPrefix() +
                 CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, varName);
+    }
+
+    public String makeVariableSetterName() {
+        final String varName = getVariableSimpleNameWithoutPrefixImpl();
+
+        if (varName.length() < 2) {
+            return "set" + varName.toUpperCase();
+        }
+
+        return "set" +
+                varName.substring(0, 1).toUpperCase() +
+                varName.substring(1, varName.length());
     }
 
     public String getVariableSimpleName() {

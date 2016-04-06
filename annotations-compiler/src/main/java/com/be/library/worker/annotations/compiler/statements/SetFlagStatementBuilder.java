@@ -24,6 +24,6 @@ public class SetFlagStatementBuilder implements MethodStatementBuilder {
         specBuilder.addStatement( "$L.flag($L, $L)",
                 mArgConfigurator,
                 fieldInfo.makeKeyFieldName(),
-                fieldInfo.getVariableSimpleName());
+                fieldInfo.getVariableSimpleNameWithoutPrefix());
     }
 }
