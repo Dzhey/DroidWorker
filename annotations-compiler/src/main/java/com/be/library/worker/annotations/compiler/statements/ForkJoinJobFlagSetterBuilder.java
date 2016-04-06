@@ -32,12 +32,20 @@ public class ForkJoinJobFlagSetterBuilder implements MethodStatementBuilder {
                             fieldInfo.getSimpleJobName(),
                             fieldInfo.getVariableSimpleName()));
             specBuilder.endControlFlow();
-        }
 
-        specBuilder.addStatement("$L.$L = $L.checkFlag($L)",
-                mArgJobName,
-                fieldInfo.getVariableSimpleName(),
-                mArgJobName,
-                extraFieldName);
+            specBuilder.addStatement("$L.$L = $L.checkFlag($L)",
+                    mArgJobName,
+                    fieldInfo.getVariableSimpleName(),
+                    mArgJobName,
+                    extraFieldName);
+        } else {
+            specBuilder.beginControlFlow("if ($L.hasFlag($L))", mArgJobName, extraFieldName);
+            specBuilder.addStatement("$L.$L = $L.checkFlag($L)",
+                    mArgJobName,
+                    fieldInfo.getVariableSimpleName(),
+                    mArgJobName,
+                    extraFieldName);
+            specBuilder.endControlFlow();
+        }
     }
 }

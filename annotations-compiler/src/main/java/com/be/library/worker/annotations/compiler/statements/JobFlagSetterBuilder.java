@@ -35,12 +35,22 @@ public class JobFlagSetterBuilder implements MethodStatementBuilder {
                             fieldInfo.getSimpleJobName(),
                             fieldInfo.getVariableSimpleName()));
             specBuilder.endControlFlow();
-        }
 
-        specBuilder.addStatement("$L.$L = $L.checkFlag($L)",
-                mArgJobName,
-                fieldInfo.getVariableSimpleName(),
-                mVarJobParamsName,
-                extraFieldName);
+            specBuilder.addStatement("$L.$L = $L.checkFlag($L)",
+                    mArgJobName,
+                    fieldInfo.getVariableSimpleName(),
+                    mVarJobParamsName,
+                    extraFieldName);
+
+        } else {
+            specBuilder.beginControlFlow("if ($L.hasFlag($L))",
+                    mVarJobParamsName, extraFieldName);
+            specBuilder.addStatement("$L.$L = $L.checkFlag($L)",
+                    mArgJobName,
+                    fieldInfo.getVariableSimpleName(),
+                    mVarJobParamsName,
+                    extraFieldName);
+            specBuilder.endControlFlow();
+        }
     }
 }
