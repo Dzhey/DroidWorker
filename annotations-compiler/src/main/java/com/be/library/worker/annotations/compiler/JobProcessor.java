@@ -1,15 +1,11 @@
 package com.be.library.worker.annotations.compiler;
 
-import com.be.library.worker.annotations.Inherited;
 import com.be.library.worker.annotations.JobExtra;
 import com.be.library.worker.annotations.JobFlag;
+import com.be.library.worker.annotations.Shared;
 import com.google.auto.service.AutoService;
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 
 import java.util.Collection;
 import java.util.List;
@@ -31,13 +27,13 @@ public class JobProcessor extends AbstractProcessor {
 
     public static final String EXTRA_ANNOTATION_PRINTABLE = "@" + JobExtra.class.getSimpleName();
     public static final String FLAG_ANNOTATION_PRINTABLE = "@" + JobFlag.class.getSimpleName();
-    public static final String INHERITED_ANNOTATION_PRINTABLE = "@" + Inherited.class.getSimpleName();
+    public static final String SHARED_ANNOTATION_PRINTABLE = "@" + Shared.class.getSimpleName();
     public static final String PROCESSOR_NAME = "@" + JobProcessor.class.getSimpleName();
 
     private ErrorReporter mErrorReporter;
     private Logger mLogger;
     private ProcessingEnvironment mProcessingEnvironment;
-    private List<FieldInfo> mDeferredFields;
+//    private List<FieldInfo> mDeferredFields;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -46,12 +42,12 @@ public class JobProcessor extends AbstractProcessor {
         mProcessingEnvironment = processingEnv;
         mErrorReporter = new ErrorReporter(processingEnv);
         mLogger = new Logger(processingEnv);
-        mDeferredFields = Lists.newArrayList();
+//        mDeferredFields = Lists.newArrayList();
     }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
-        return ImmutableSet.of(JobExtra.class.getName(), JobFlag.class.getName(), Inherited.class.getName());
+        return ImmutableSet.of(JobExtra.class.getName(), JobFlag.class.getName(), Shared.class.getName());
     }
 
     @Override
@@ -65,12 +61,12 @@ public class JobProcessor extends AbstractProcessor {
         mLogger.note(String.format("worker compiler started processing on %d elements..", annotations.size()));
 
         if (roundEnv.processingOver()) {
-            for (FieldInfo fieldInfo : mDeferredFields) {
-                mErrorReporter.reportError(String.format("Did not generate injector for \"%s.%s\""
-                        + " because it references undefined types",
-                        fieldInfo.getQualifiedJobName(),
-                        fieldInfo.getVariableSimpleName()));
-            }
+//            for (FieldInfo fieldInfo : mDeferredFields) {
+//                mErrorReporter.reportError(String.format("Did not generate injector for \"%s.%s\""
+//                        + " because it references undefined types",
+//                        fieldInfo.getQualifiedJobName(),
+//                        fieldInfo.getVariableSimpleName()));
+//            }
 
             return false;
         }
@@ -80,16 +76,17 @@ public class JobProcessor extends AbstractProcessor {
                 roundEnv.getElementsAnnotatedWith(JobExtra.class);
         Collection<? extends Element> flagElements =
                 roundEnv.getElementsAnnotatedWith(JobFlag.class);
-        if (!mDeferredFields.isEmpty()) {
-            extraElements = Lists.newArrayList(Iterables.concat(extraElements, getDeferredExtras()));
-            flagElements = Lists.newArrayList(Iterables.concat(flagElements, getDeferredFlags()));
-            mDeferredFields.clear();
-        }
+
+//        if (!mDeferredFields.isEmpty()) {
+//            extraElements = Lists.newArrayList(Iterables.concat(extraElements, getDeferredExtras()));
+//            flagElements = Lists.newArrayList(Iterables.concat(flagElements, getDeferredFlags()));
+//            mDeferredFields.clear();
+//        }
 
         try {
             processExtraElements(jobClassInfo, extraElements);
             processFlagElements(jobClassInfo, flagElements);
-//            processInheritedElements(roundEnv.getElementsAnnotatedWith(Inherited.class));
+            processSharedElements(jobClassInfo, roundEnv.getElementsAnnotatedWith(Shared.class));
 
             final JobExtraInjectorGenerator generator =
                     new JobExtraInjectorGenerator(mProcessingEnvironment);
@@ -107,28 +104,30 @@ public class JobProcessor extends AbstractProcessor {
         return false;
     }
 
-    private void processInheritedElements(Collection<? extends Element> elements) {
-        // Check that each @Inherited class has inherited field
+    private void processSharedElements(JobClassInfo classInfo, Collection<? extends Element> elements) {
+        // Check that each @Shared class has inherited field
         for (Element element : elements) {
             try {
                 if (element.getKind() == ElementKind.CLASS) {
                     final TypeElement typeElement = TypeSimplifier.toTypeElement(element.asType());
                     final List<VariableElement> fields = ElementFilter.fieldsIn(typeElement.getEnclosedElements());
-                    boolean hasInheritedField = false;
+                    boolean hasSharedField = false;
                     for (VariableElement field : fields) {
-                        if (field.getAnnotation(Inherited.class) != null) {
-                            hasInheritedField = true;
+                        if (field.getAnnotation(Shared.class) != null) {
+                            hasSharedField = true;
                             break;
                         }
                     }
 
-                    if (!hasInheritedField) {
-                        mErrorReporter.reportError(String.format("inherited \"%s\" class has no @%s-annotated fields",
+                    if (!hasSharedField) {
+                        mErrorReporter.reportError(String.format("class \"%s\" has no @%s-annotated fields",
                                 typeElement.getQualifiedName().toString(),
-                                Inherited.class.getSimpleName()));
+                                Shared.class.getSimpleName()));
                     }
                     continue;
                 }
+
+                classInfo.registerJobExtraInfo(processSharedElement(element));
 
             } catch (AbortProcessingException e) {
                 // We abandoned this type; continue with the next.
@@ -180,7 +179,7 @@ public class JobProcessor extends AbstractProcessor {
         }
 
         if (element.getKind() != ElementKind.FIELD) {
-            mErrorReporter.abortWithError(EXTRA_ANNOTATION_PRINTABLE + " only applies to classes", element);
+            mErrorReporter.abortWithError(EXTRA_ANNOTATION_PRINTABLE + " only applies to fields", element);
         }
 
         final VariableElement variableElement = (VariableElement) element;
@@ -202,7 +201,7 @@ public class JobProcessor extends AbstractProcessor {
         }
 
         if (element.getKind() != ElementKind.FIELD) {
-            mErrorReporter.abortWithError(FLAG_ANNOTATION_PRINTABLE + " only applies to classes", element);
+            mErrorReporter.abortWithError(FLAG_ANNOTATION_PRINTABLE + " only applies to fields", element);
         }
 
         final VariableElement variableElement = (VariableElement) element;
@@ -213,31 +212,53 @@ public class JobProcessor extends AbstractProcessor {
         return info;
     }
 
-    private Iterable<Element> getDeferredExtras() {
-        return Iterables.transform(Iterables.filter(mDeferredFields, new Predicate<FieldInfo>() {
-            @Override
-            public boolean apply(FieldInfo input) {
-                return input.getFieldAnnotationType().equals(JobExtra.class);
-            }
-        }), new Function<FieldInfo, Element>() {
-            @Override
-            public Element apply(FieldInfo input) {
-                return input.getElement();
-            }
-        });
+    private SharedFieldInfo processSharedElement(Element element) {
+        final Shared shared = element.getAnnotation(Shared.class);
+        if (shared == null) {
+            mErrorReporter.abortWithError("annotation processor for " +
+                    SHARED_ANNOTATION_PRINTABLE +
+                    " was invoked with a type" +
+                    " that does not have that annotation; this is probably a compiler bug", element);
+        }
+
+        if (element.getKind() != ElementKind.FIELD) {
+            mErrorReporter.abortWithError(SHARED_ANNOTATION_PRINTABLE + " only applies to classes or fields", element);
+        }
+
+        final VariableElement variableElement = (VariableElement) element;
+
+        final SharedFieldInfo info = new SharedFieldInfo(variableElement, mProcessingEnvironment);
+
+        info.init();
+
+        return info;
     }
 
-    private Iterable<Element> getDeferredFlags() {
-        return Iterables.transform(Iterables.filter(mDeferredFields, new Predicate<FieldInfo>() {
-            @Override
-            public boolean apply(FieldInfo input) {
-                return input.getFieldAnnotationType().equals(JobExtra.class);
-            }
-        }), new Function<FieldInfo, Element>() {
-            @Override
-            public Element apply(FieldInfo input) {
-                return input.getElement();
-            }
-        });
-    }
+//    private Iterable<Element> getDeferredExtras() {
+//        return Iterables.transform(Iterables.filter(mDeferredFields, new Predicate<FieldInfo>() {
+//            @Override
+//            public boolean apply(FieldInfo input) {
+//                return input.getFieldAnnotationType().equals(JobExtra.class);
+//            }
+//        }), new Function<FieldInfo, Element>() {
+//            @Override
+//            public Element apply(FieldInfo input) {
+//                return input.getElement();
+//            }
+//        });
+//    }
+//
+//    private Iterable<Element> getDeferredFlags() {
+//        return Iterables.transform(Iterables.filter(mDeferredFields, new Predicate<FieldInfo>() {
+//            @Override
+//            public boolean apply(FieldInfo input) {
+//                return input.getFieldAnnotationType().equals(JobExtra.class);
+//            }
+//        }), new Function<FieldInfo, Element>() {
+//            @Override
+//            public Element apply(FieldInfo input) {
+//                return input.getElement();
+//            }
+//        });
+//    }
 }

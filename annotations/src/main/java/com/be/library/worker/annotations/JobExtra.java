@@ -10,5 +10,4 @@ import java.lang.annotation.Target;
 public @interface JobExtra {
     String value() default "";
     boolean optional() default false;
-    boolean inherited() default false;
 }

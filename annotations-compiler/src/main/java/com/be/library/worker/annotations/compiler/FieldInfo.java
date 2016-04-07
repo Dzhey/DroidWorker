@@ -1,6 +1,5 @@
 package com.be.library.worker.annotations.compiler;
 
-import com.be.library.worker.annotations.Inherited;
 import com.google.common.base.CaseFormat;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -8,7 +7,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
@@ -61,8 +59,6 @@ public abstract class FieldInfo {
     public abstract String getVariableKeyPrefix();
 
     public abstract Class<?> getFieldAnnotationType();
-
-    public abstract boolean isInherited();
 
     public String getVariableSimpleNameWithoutPrefix() {
         final String varName = getVariableSimpleNameWithoutPrefixImpl();
@@ -206,31 +202,7 @@ public abstract class FieldInfo {
     }
 
     protected String getExpectedSuperclass() {
-        if (isInherited()) {
-            return Consts.JOB_TYPE_FORK_JOIN;
-        }
-
         return Consts.JOB_INTERFACE_TYPE_NAME;
-    }
-
-    private TypeElement extractJobType(Inherited annotation) {
-        TypeElement parentJobType;
-        try {
-            final Class<?> jobClass = annotation.value();
-            parentJobType = mEnvironment.getElementUtils().getTypeElement(jobClass.getCanonicalName());
-
-        } catch (MirroredTypeException e) {
-            parentJobType = TypeSimplifier.toTypeElement(e.getTypeMirror());
-        }
-
-        if (parentJobType == null || parentJobType.getQualifiedName().toString().equals(Class.class.getName())) {
-            mErrorReporter.abortWithError(String.format(
-                    "unable to define parent for the field \"%s\"", getQualifiedFieldName()));
-        }
-
-        checkJobSuperclass(parentJobType);
-
-        return parentJobType;
     }
 }
 
