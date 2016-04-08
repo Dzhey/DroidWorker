@@ -10,5 +10,4 @@ import java.lang.annotation.Target;
 public @interface JobFlag {
     String value() default "";
     boolean optional() default true;
-    boolean inherited() default false;
 }
