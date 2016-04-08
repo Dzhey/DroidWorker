@@ -570,7 +570,13 @@ public abstract class BaseJob extends JobObservable {
     }
 
     protected JobManager getJobManager() {
-        return JobManager.getInstance();
+        try {
+            return JobManager.getInstance();
+        } catch (IllegalStateException e) {
+            // ignore
+        }
+
+        return null;
     }
 
     /**
@@ -587,8 +593,9 @@ public abstract class BaseJob extends JobObservable {
     protected void onPreExecute() throws Exception {
         yieldForPause();
 
-        if (getJobManager().getProperties().isAutoInjectUsed()) {
-            getJobManager().injectJobExtras(this);
+        final JobManager jobManager = getJobManager();
+        if (jobManager != null && jobManager.getProperties().isAutoInjectUsed()) {
+            jobManager.injectJobExtras(this);
         }
 
         final JobEvent result = mExecutionHandler.onCheckPreconditions();
