@@ -1,6 +1,7 @@
 package com.be.android.library.worker.controllers;
 
 import android.os.Handler;
+import android.util.Log;
 
 import com.be.android.library.worker.base.JobEvent;
 import com.be.android.library.worker.base.JobStatus;
@@ -9,6 +10,7 @@ import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.interfaces.JobEventObservable;
 import com.be.android.library.worker.interfaces.JobFactory;
 import com.be.android.library.worker.models.JobParams;
+import com.be.android.library.worker.models.Properties;
 import com.be.android.library.worker.util.JobFutureResult;
 import com.be.android.library.worker.util.JobSelector;
 import com.be.android.library.worker.util.ReflectiveJobFactory;
@@ -30,9 +32,11 @@ public abstract class JobManager implements JobEventObservable {
     private final ConcurrentLinkedQueue<Job> mJobs;
     private final AtomicInteger mJobIdCounter;
     private final Handler mHandler;
+    private final Properties mProperties;
 
     private static JobManager instance;
     private static final Object MUTEX = new Object();
+    private static final String LOG_TAG = JobManager.class.getSimpleName();
 
     private final JobEventListener mJobEventListener = new JobEventListener() {
         @Override
@@ -81,6 +85,7 @@ public abstract class JobManager implements JobEventObservable {
         mJobs = new ConcurrentLinkedQueue<Job>();
         mJobIdCounter = new AtomicInteger(0);
         mHandler = new Handler();
+        mProperties = new Properties();
     }
 
     public JobFutureResult submitJobForResult(Job job) {
@@ -111,6 +116,38 @@ public abstract class JobManager implements JobEventObservable {
     }
 
     protected abstract void submitJobImpl(Job job);
+
+    public Properties getProperties() {
+        return mProperties;
+    }
+
+    /**
+     * Find injector and perform extras injection via <i>injectExtras</i> method call.
+     * <br />
+     * <i>Method is called automatically per each
+     * {@link com.be.android.library.worker.base.BaseJob} if auto inject is set to true.</i>
+     * <br />
+     * <br />
+     * <i>Method uses reflection to reference appropriate generated job injector class.</i>
+     * @param job to inject extras in
+     * @see com.be.android.library.worker.models.Properties#isAutoInjectUsed()
+     */
+    public void injectJobExtras(Job job) {
+        try {
+            final Class<?> injectorClass = Class.forName(job.getClass().getName() + "Extras");
+
+            injectorClass.getMethod("injectExtras", job.getClass()).invoke(injectorClass, job);
+
+            if (mProperties.isDebugOutputEnabled()) {
+                Log.d(LOG_TAG, String.format("injected extras to %s", job.getClass()));
+            }
+
+        } catch (Exception e) {
+            if (mProperties.isDebugOutputEnabled()) {
+                Log.d(LOG_TAG, String.format("no extras class found for %s", job.getClass()));
+            }
+        }
+    }
 
     public Job findJob(int jobId) {
         for (Job job : mJobs) {

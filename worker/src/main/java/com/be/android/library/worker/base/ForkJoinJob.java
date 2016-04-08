@@ -470,10 +470,6 @@ public abstract class ForkJoinJob extends BaseJob {
         }
     }
 
-    protected JobManager getJobManager() {
-        return JobManager.getInstance();
-    }
-
     public class ForkBuilder {
 
         private final ForkJoinJob job;

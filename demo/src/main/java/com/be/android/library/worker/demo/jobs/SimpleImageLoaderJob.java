@@ -27,13 +27,6 @@ public class SimpleImageLoaderJob extends LoadJob {
     }
 
     @Override
-    protected void onPreExecute() throws Exception {
-        super.onPreExecute();
-
-        SimpleImageLoaderJobExtras.injectExtras(this);
-    }
-
-    @Override
     protected LoadJobResult<Bitmap> performLoad() throws Exception {
         final URL url = new URL(mImageUrl);
 

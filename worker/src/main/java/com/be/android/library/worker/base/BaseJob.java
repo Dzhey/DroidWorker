@@ -3,6 +3,7 @@ package com.be.android.library.worker.base;
 import android.util.Log;
 
 import com.be.android.library.worker.controllers.JobEventObservableImpl;
+import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.exceptions.JobExecutionException;
 import com.be.android.library.worker.interfaces.JobEventObservable;
 import com.be.android.library.worker.models.JobParams;
@@ -568,6 +569,10 @@ public abstract class BaseJob extends JobObservable {
     protected void onCancelled() {
     }
 
+    protected JobManager getJobManager() {
+        return JobManager.getInstance();
+    }
+
     /**
      * Called before actual job execution is performed.
      * <br/>
@@ -581,6 +586,10 @@ public abstract class BaseJob extends JobObservable {
      */
     protected void onPreExecute() throws Exception {
         yieldForPause();
+
+        if (getJobManager().getProperties().isAutoInjectUsed()) {
+            getJobManager().injectJobExtras(this);
+        }
 
         final JobEvent result = mExecutionHandler.onCheckPreconditions();
 
