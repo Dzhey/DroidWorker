@@ -68,14 +68,14 @@ public abstract class WorkerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (ACTION_SUBMIT_JOB.equals(intent.getAction()) == false) {
+        if (!ACTION_SUBMIT_JOB.equals(intent.getAction())) {
             Log.e(LOG_TAG, String.format("unsupported intent action received: %s", intent.getAction()));
             stopSelf(startId);
 
             return Service.START_NOT_STICKY;
         }
 
-        int jobId = intent.getIntExtra(EXTRA_JOB_ID, JobManager.JOB_ID_UNSPECIFIED);
+        final int jobId = intent.getIntExtra(EXTRA_JOB_ID, JobManager.JOB_ID_UNSPECIFIED);
         if (jobId == JobManager.JOB_ID_UNSPECIFIED) {
             Log.e(LOG_TAG, "job id is not specified");
             stopSelf(startId);
@@ -83,7 +83,7 @@ public abstract class WorkerService extends Service {
             return Service.START_NOT_STICKY;
         }
 
-        Job job = getJobManager().findJob(jobId);
+        final Job job = getJobManager().findJob(jobId);
         if (job == null) {
             Log.e(LOG_TAG, String.format("job id '%d' not found", jobId));
             stopSelf(startId);

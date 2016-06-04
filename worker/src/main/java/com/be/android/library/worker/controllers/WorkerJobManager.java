@@ -12,9 +12,9 @@ public class WorkerJobManager extends JobManager {
 
     private static final String LOG_TAG = WorkerJobManager.class.getSimpleName();
 
-    private final int workerThreadPoolSize;
-    private final Context context;
-    private final Class<?> workerServiceClass;
+    private final int mWorkerThreadPoolSize;
+    private final Context mContext;
+    private final Class<?> mWorkerServiceClass;
 
     public WorkerJobManager(Context context) {
         this(context, ThreadPoolWorkerService.THREAD_POOL_SIZE_DEFAULT, ThreadPoolWorkerService.class);
@@ -22,18 +22,18 @@ public class WorkerJobManager extends JobManager {
 
     public WorkerJobManager(Context context, int workerThreadPoolSize, Class<?> workerServiceClass) {
         if (workerThreadPoolSize < 1) {
-            throw new IllegalArgumentException("workerThreadPoolSize < 1");
+            throw new IllegalArgumentException("mWorkerThreadPoolSize < 1");
         }
 
-        if (WorkerService.class.isAssignableFrom(workerServiceClass) == false) {
+        if (!WorkerService.class.isAssignableFrom(workerServiceClass)) {
             throw new IllegalArgumentException(String.format(
                     "specified class '%s' is not assignable from '%s'",
                     workerServiceClass.getName(), WorkerService.class.getName()));
         }
 
-        this.context = context;
-        this.workerThreadPoolSize =workerThreadPoolSize;
-        this.workerServiceClass = workerServiceClass;
+        mContext = context;
+        mWorkerThreadPoolSize = workerThreadPoolSize;
+        mWorkerServiceClass = workerServiceClass;
     }
 
     @Override
@@ -45,9 +45,9 @@ public class WorkerJobManager extends JobManager {
             return;
         }
 
-        Intent submitIntent = createSubmitIntent(context, job);
+        Intent submitIntent = createSubmitIntent(mContext, job);
         try {
-            if (context.startService(submitIntent) == null) {
+            if (mContext.startService(submitIntent) == null) {
                 Log.e(LOG_TAG, "unable to start worker service");
 
                 throw new RuntimeException("in case to submit job to " +
@@ -62,8 +62,9 @@ public class WorkerJobManager extends JobManager {
 
     private Intent createSubmitIntent(Context context, Job job) {
         Intent intent = new Intent(WorkerService.ACTION_SUBMIT_JOB);
-        intent.setClass(context.getApplicationContext(), workerServiceClass);
+        intent.setClass(context.getApplicationContext(), mWorkerServiceClass);
         intent.putExtra(WorkerService.EXTRA_JOB_ID, job.getJobId());
+        intent.putExtra(ThreadPoolWorkerService.EXTRA_THREAD_POOL_SIZE, mWorkerThreadPoolSize);
 
         addSubmitIntentParams(intent, job);
 
