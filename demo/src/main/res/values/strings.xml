@@ -6,7 +6,11 @@
 
     <string name="start">Start</string>
     <string name="simple_loader_demo">Simple loader demo</string>
+    <string name="simple_loader_demo_hint">Load bitmap image from network</string>
+    <string name="retrofit_demo">Retrofit GitHub demo</string>
+    <string name="retrofit_demo_hint">Load company\'s repository list from GitHub (with pagination)</string>
     <string name="pause_demo">Job Pause/Resume</string>
+    <string name="pause_demo_hint">Pause and resume running job</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
     <string name="pause_demo_description">Job will continue running in background service even if you press
@@ -16,14 +20,19 @@
     </string>
     <string name="action_cancel_job">Cancel job</string>
     <string name="cancel_demo">Cancelable Job demo</string>
+    <string name="cancel_demo_hint">Cancel running job</string>
     <string name="job_cancelled">Cancelled</string>
     <string name="job_in_progress">Working&#8230;</string>
     <string name="simple_loader_demo_description">The simplest job implementation uses URLConnection to load image from network</string>
     <string name="cancel_demo_description">Background work may be easily cancelled</string>
     <string name="multiload_work_demo">Multiple job loaders</string>
     <string name="serial_work_demo">Serial data load demo</string>
+    <string name="serial_work_demo_hint">Load list entries one by one</string>
     <string name="async_work_demo">Async data load demo</string>
-    <string name="fork_join_example">Reuse loaders demo</string>
+    <string name="async_work_demo_hint">Load list entries using entire thread pool</string>
+    <string name="fork_join_example">Reuse job demo</string>
+    <string name="fork_join_example_hint">Start set of jobs from one and return joined result</string>
+    <string name="caption_try_again">Try again</string>
 
     <array name="demo_list">
         <item>@string/simple_loader_demo</item>
@@ -32,6 +41,17 @@
         <item>@string/serial_work_demo</item>
         <item>@string/async_work_demo</item>
         <item>@string/fork_join_example</item>
+        <item>@string/retrofit_demo</item>
+    </array>
+
+    <array name="demo_list_hints">
+        <item>@string/simple_loader_demo_hint</item>
+        <item>@string/cancel_demo_hint</item>
+        <item>@string/pause_demo_hint</item>
+        <item>@string/serial_work_demo_hint</item>
+        <item>@string/async_work_demo_hint</item>
+        <item>@string/fork_join_example_hint</item>
+        <item>@string/retrofit_demo_hint</item>
     </array>
 
 </resources>

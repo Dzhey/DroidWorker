@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class JobEventDispatcher implements JobEventHandlerInterface {
@@ -82,8 +83,11 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         mListeners = new LinkedList<ListenerEntry>();
         mPendingJobs = new HashSet<Integer>();
         mHandler = new Handler(Looper.getMainLooper());
-        mListenerTag = String.format("%s_%s_%d", listenerName,
-                getClass().getSimpleName(), System.currentTimeMillis());
+        mListenerTag = String.format(Locale.US, "%s_%s_%d",
+                listenerName,
+                getClass().getSimpleName(),
+                System.currentTimeMillis());
+
         mHierarchyViewer = new HierarchyViewer(context);
         mHierarchyViewer.registerInvocationHandlerProvider(new JobEventInvocationHandlerProvider());
         mHierarchyViewer.registerInvocationHandlerProvider(new JobResultInvocationHandlerProvider());

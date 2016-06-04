@@ -9,6 +9,7 @@ import com.be.android.library.worker.controllers.JobLoaderManager;
 import com.be.android.library.worker.controllers.JobManager;
 import com.be.android.library.worker.handlers.JobEventDispatcher;
 import com.be.android.library.worker.interfaces.Job;
+import com.be.android.library.worker.util.JobProgressTracker;
 import com.be.android.library.worker.util.JobSelector;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
 public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbacks  {
 
     private JobEventDispatcher mEventDispatcher;
+    private JobProgressTracker mProgressTracker;
 
     private final JobLoader.JobLoaderCallbacks mJobLoaderCallbacks =
             new JobLoader.JobLoaderCallbacks() {
@@ -31,17 +33,34 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
         }
     };
 
+    private final JobProgressTracker.Callbacks mJobProgressTrackerCallbacks =
+            new JobProgressTracker.Callbacks() {
+
+        @Override
+        public void onProgressStarted() {
+            onJobProgressStarted();
+        }
+
+        @Override
+        public void onProgressStopped() {
+            onJobProgressStopped();
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mEventDispatcher = new JobEventDispatcher(getActivity());
         mEventDispatcher.restoreState(savedInstanceState);
+        mProgressTracker = new JobProgressTracker(getJobManager());
     }
 
     @Override
     public void onPause() {
         mEventDispatcher.unregister(this);
+        mProgressTracker.detach();
+        mProgressTracker.setCallbacks(null);
 
         super.onPause();
     }
@@ -51,6 +70,8 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
         super.onResume();
 
         mEventDispatcher.register(this);
+        mProgressTracker.attach();
+        mProgressTracker.setCallbacks(mJobProgressTrackerCallbacks);
     }
 
     public boolean handleBackPress() {
@@ -59,6 +80,10 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
 
     protected JobEventDispatcher getJobEventDispatcher() {
         return mEventDispatcher;
+    }
+
+    protected JobProgressTracker getProgressTracker() {
+        return mProgressTracker;
     }
 
     @Override
@@ -100,7 +125,11 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
         JobLoaderManager mgr = JobLoaderManager.getInstance();
         JobLoader loader = mgr.initLoader(mEventDispatcher, loaderAttachTag, callbacks);
 
-        return loader.requestLoad(data);
+        final int jobId = loader.requestLoad(data);
+
+        onLoadRequested(loaderAttachTag, jobId);
+
+        return jobId;
     }
 
     protected int requestLoad(String loaderAttachTag, Bundle data) {
@@ -154,6 +183,11 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
     }
 
     protected void onReloadRequested(String loaderAttachTag, int jobId) {
+        mProgressTracker.registerJob(jobId);
+    }
+
+    protected void onLoadRequested(String loaderAttachTag, int jobId) {
+        mProgressTracker.registerJob(jobId);
     }
 
     @Override
@@ -163,5 +197,15 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
 
     protected Job onCreateJob(String attachTag) {
         throw new UnsupportedOperationException("should implement onCreateJob");
+    }
+
+    public JobManager getJobManager() {
+        return JobManager.getInstance();
+    }
+
+    protected void onJobProgressStarted() {
+    }
+
+    protected void onJobProgressStopped() {
     }
 }

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingBottom="16dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:paddingTop="16dp"
+                tools:ignore="RtlHardcoded">
+
+    <TextView
+        android:id="@+id/repoLang"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="#888"
+        tools:text="Language"/>
+
+    <TextView
+        android:id="@+id/repoName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@id/repoLang"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textColor="#4078C0"
+        tools:text="Repository Name"/>
+
+</RelativeLayout>
