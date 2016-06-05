@@ -12,11 +12,11 @@ Flexible background processing library for Android made with respect to the app 
  * __Job parameteres__ injection powered by code generation and annotations
  * __Job reset__ feature combined with builder-styled initializer to reuse _Job_ instance
 
- ## Hello World
- Most-common _Job_ use case is _Loader_ replacement, but you can use _Job_ for any purpose (networking, database operations, data processing, etc)
+## Hello World
+Most-common _Job_ use case is _Loader_ replacement, but you can use _Job_ for any purpose (networking, database operations, data processing, etc)
 
- ### UI code
- ```java
+### UI code
+```java
 
 public class DemoUserViewFragment extends BaseFragment {
 
@@ -59,11 +59,11 @@ public class DemoUserViewFragment extends BaseFragment {
         // display error (event argument is optional and it can contain detailed error info)
       }
 }
- ```
- Please note that some common code including event subscription is moved to the base class (see demo sample for details).
+```
+Please note that some common code including event subscription is moved to the base class (see demo sample for details).
 
- ### Job code
- ```java
+### Job code
+```java
 public class LoadUserJob extends LoadJob {
 
     @JobExtra
@@ -100,5 +100,5 @@ public class LoadUserJob extends LoadJob {
       }
 }
  ```
- ## Setup
- _coming soon_
+## Setup
+_coming soon_
