@@ -87,6 +87,27 @@ public abstract class BaseInvocationHandler implements InvocationHandler {
     }
 
     @Override
+    public boolean isFitEvent(Object receiver, JobEvent event) {
+        if (!checkPendingStatus(event)
+                || !checkPendingJobType(event)
+                || !checkPendingEventCode(event)
+                || !checkPendingTags(event)
+                || mInvokers.isEmpty()) {
+
+            return false;
+        }
+
+        for (EventHandlerInvoker invoker : mInvokers) {
+            if (invoker.isFitEvent(event)) {
+                mApplicableInvoker = invoker;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
     public boolean canApply(Object receiver, JobEvent event) {
         if (!checkPendingStatus(event)
                 || !checkPendingJobType(event)
@@ -117,7 +138,7 @@ public abstract class BaseInvocationHandler implements InvocationHandler {
             return true;
         }
 
-        if (canApply(receiver, event) == false) {
+        if (!canApply(receiver, event)) {
             return false;
         }
 

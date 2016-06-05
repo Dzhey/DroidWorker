@@ -30,6 +30,15 @@ public class PolymorphicEventHandlerInvoker implements EventHandlerInvoker {
     }
 
     @Override
+    public boolean isFitEvent(JobEvent event) {
+        if (mMethodParamTypes.length > 1 || mMethodParamTypes.length == 0) {
+            return false;
+        }
+
+        return mMethodParamTypes[0].isAssignableFrom(event.getClass());
+    }
+
+    @Override
     public Object invoke(Object target, JobEvent event) throws InvocationTargetException, IllegalAccessException {
         if (mMethodParamTypes.length == 0) {
             return mMethod.invoke(target);

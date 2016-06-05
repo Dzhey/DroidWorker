@@ -332,24 +332,34 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     }
 
     private boolean sendJobEvent(Object listener, List<InvocationHandler> handlers, JobEvent event) {
-        for (InvocationHandler handler : handlers) {
-            try {
-                if (handler.canApply(listener, event)) {
-                    handler.apply(listener, event);
-                } else {
+        try {
+            for (InvocationHandler handler : handlers) {
+                if (!handler.isFitEvent(listener, event)) {
                     continue;
                 }
 
+                handler.apply(listener, event);
+
                 return true;
-
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("unable to invoke job result event handler", e);
-
-            } catch (Exception e) {
-                throw new RuntimeException(String.format(
-                        "job result event handler threw an exception '%s'",
-                        e.toString()), e);
             }
+
+            for (InvocationHandler handler : handlers) {
+                if (!handler.canApply(listener, event)) {
+                    continue;
+                }
+
+                handler.apply(listener, event);
+
+                return true;
+            }
+
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("unable to invoke job result event handler", e);
+
+        } catch (Exception e) {
+            throw new RuntimeException(String.format(
+                    "job result event handler threw an exception '%s'",
+                    e.toString()), e);
         }
 
         return false;

@@ -199,16 +199,18 @@ public class GitHubDemoFragment extends BaseFragment implements TitleProvider {
     }
 
     @OnJobFailure(LoadGitHubRepoListJob.class)
-    public void onRepoListLoadFailure(JobEvent failureResult) {
+    public void onRepoListLoadFailure(GitHubErrorResult failureResult) {
         mIsLoadedLastPage = true;
         mButtonTryAgain.setVisibility(View.VISIBLE);
 
-        if (failureResult instanceof GitHubErrorResult) {
-            final GitHubError error = ((GitHubErrorResult) failureResult).getGitHubError();
-            showToast(String.valueOf(error.getMessage()), Toast.LENGTH_LONG);
+        final GitHubError error = failureResult.getGitHubError();
+        showToast(String.valueOf(error.getMessage()), Toast.LENGTH_LONG);
+    }
 
-            return;
-        }
+    @OnJobFailure(LoadGitHubRepoListJob.class)
+    public void onRepoListLoadFailure() {
+        mIsLoadedLastPage = true;
+        mButtonTryAgain.setVisibility(View.VISIBLE);
 
         showToast("Load failed for some reason; Please see logcat logs.", Toast.LENGTH_LONG);
     }
