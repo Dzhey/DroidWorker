@@ -29,7 +29,7 @@ public abstract class BaseJob extends JobObservable {
         public JobEvent executeImpl() throws Exception;
     }
 
-    public static final String LOG_TAG = BaseJob.class.getSimpleName();
+    public static final String LOG_TAG = BaseJob.class.getName();
 
     private static final JobEvent EVENT_OK = JobEvent.ok();
 

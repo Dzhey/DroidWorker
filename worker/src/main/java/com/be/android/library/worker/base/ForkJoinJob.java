@@ -28,7 +28,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class ForkJoinJob extends BaseJob {
 
-    private static final String LOG_TAG = ForkJoinJob.class.getSimpleName();
+    private static final String LOG_TAG = ForkJoinJob.class.getName();
 
     public interface ForkJoiner extends Future<JobEvent> {
         JobEvent join();
@@ -427,11 +427,11 @@ public abstract class ForkJoinJob extends BaseJob {
         switch (resultEvent.getJobStatus()) {
             case CANCELLED:
                 throw new JobExecutionException(String.format(
-                        "job '%s' has been cancelled", job.getClass().getSimpleName()));
+                        "job '%s' has been cancelled", job.getClass().getName()));
 
             case FAILED:
                 throw new JobExecutionException(String.format("job '%s' result unsuccessful",
-                        job.getClass().getSimpleName()));
+                        job.getClass().getName()));
 
             case OK:
                 break;

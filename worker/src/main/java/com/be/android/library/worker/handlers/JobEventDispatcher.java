@@ -1,6 +1,9 @@
 package com.be.android.library.worker.handlers;
 
+import android.annotation.TargetApi;
 import android.content.Context;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,6 +30,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public class JobEventDispatcher implements JobEventHandlerInterface {
 
@@ -34,6 +41,9 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
 
     private static final String KEY_PENDING_JOBS = "JobEventHandler_pending_jobs";
     private static final String KEY_FINISH_LISTENER_TAG = "JobEventHandler_listener_tag";
+    private static final String THREAD_NAME = "JobEventDispatcher_Thread";
+
+    private static Executor sAsyncExecutor;
 
     private final LinkedList<ListenerEntry> mListeners;
     private final Set<Integer> mPendingJobs;
@@ -41,6 +51,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
     private final String mListenerTag;
     private final HierarchyViewer mHierarchyViewer;
     private final JobManager mJobManager;
+    private final ConcurrentLinkedQueue<WeakReference<Object>> mPendingListeners;
     private boolean mIsFlushEnabled;
 
     private final CachedJobEventListener mJobFinishedListener = new CachedJobEventListener() {
@@ -83,11 +94,12 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         mListeners = new LinkedList<ListenerEntry>();
         mPendingJobs = new HashSet<Integer>();
         mHandler = new Handler(Looper.getMainLooper());
-        mListenerTag = String.format(Locale.US, "%s_%s_%d",
+        mListenerTag = String.format(Locale.US, "%s_%d_%d",
                 listenerName,
-                getClass().getSimpleName(),
+                getClass().hashCode(),
                 System.currentTimeMillis());
 
+        mPendingListeners = new ConcurrentLinkedQueue<WeakReference<Object>>();
         mHierarchyViewer = new HierarchyViewer(context);
         mHierarchyViewer.registerInvocationHandlerProvider(new JobEventInvocationHandlerProvider());
         mHierarchyViewer.registerInvocationHandlerProvider(new JobResultInvocationHandlerProvider());
@@ -255,6 +267,8 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             throw new IllegalArgumentException("listener should not be null");
         }
 
+        removePendingListener(listener);
+
         for (ListenerEntry entry : mListeners) {
             Object ref = entry.getListenerObjectRef().get();
             if (ref != null && ref == listener) {
@@ -273,8 +287,63 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
         flushJobEvents(mListenerTag);
     }
 
+    public void registerAsync(final Object listener) {
+        mPendingListeners.add(new WeakReference<Object>(listener));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            registerAsyncApi11(listener);
+            return;
+        }
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                if (hasPendingListener(listener)) {
+                    register(listener);
+                }
+            }
+        }.execute();
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    protected void registerAsyncApi11(final Object listener) {
+        if (sAsyncExecutor == null) {
+            synchronized (this) {
+                if (sAsyncExecutor == null) {
+                    sAsyncExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+                        @Override
+                        public Thread newThread(Runnable r) {
+                            return new Thread(r, THREAD_NAME);
+                        }
+                    });
+                }
+            }
+        }
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                if (hasPendingListener(listener)) {
+                    register(listener);
+                }
+            }
+        }.executeOnExecutor(sAsyncExecutor);
+    }
+
     public void unregister(Object listener) {
         if (listener == null) return;
+
+        removePendingListener(listener);
 
         Iterator<ListenerEntry> iter = mListeners.iterator();
         while (iter.hasNext()) {
@@ -360,6 +429,42 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             throw new RuntimeException(String.format(
                     "job result event handler threw an exception '%s'",
                     e.toString()), e);
+        }
+
+        return false;
+    }
+
+    private void removePendingListener(Object listener) {
+        if (mPendingListeners.isEmpty()) {
+            return;
+        }
+
+        final Iterator<WeakReference<Object>> it = mPendingListeners.iterator();
+
+        while (it.hasNext()) {
+            final WeakReference<Object> ref = it.next();
+            final Object object = ref.get();
+
+            if (object == null || object == listener) {
+                it.remove();
+            }
+        }
+    }
+
+    private boolean hasPendingListener(Object listener) {
+        if (mPendingListeners.isEmpty()) {
+            return false;
+        }
+
+        final Iterator<WeakReference<Object>> it = mPendingListeners.iterator();
+
+        while (it.hasNext()) {
+            final WeakReference<Object> ref = it.next();
+            final Object object = ref.get();
+
+            if (object == listener) {
+                return true;
+            }
         }
 
         return false;
