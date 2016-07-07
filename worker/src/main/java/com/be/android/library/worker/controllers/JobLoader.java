@@ -11,8 +11,6 @@ import java.lang.ref.WeakReference;
 
 public class JobLoader {
 
-    private static final String LOG_TAG = JobLoader.class.getSimpleName();
-
     public interface JobLoaderCallbacks {
         Job onCreateJob(String attachTag, Bundle data);
     }
