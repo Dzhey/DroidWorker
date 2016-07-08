@@ -2,11 +2,9 @@ package com.be.android.library.worker.handlers;
 
 import android.annotation.TargetApi;
 import android.os.Build;
-import android.util.Log;
-import android.util.SparseArray;
 
-import com.be.android.library.worker.interfaces.JobEventListener;
 import com.be.android.library.worker.base.JobEvent;
+import com.be.android.library.worker.interfaces.JobEventListener;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -15,8 +13,6 @@ import java.util.LinkedList;
  * Job event listener used to retain job events for short period of time
  */
 public abstract class CachedJobEventListener implements JobEventListener {
-
-    private static final String LOG_TAG = CachedJobEventListener.class.getSimpleName();
 
     private static final int MAX_SIZE_THRESHOLD = 10;
 
