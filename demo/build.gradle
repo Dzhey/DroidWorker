@@ -9,15 +9,15 @@ apt {
 }
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "21.1.2"
+    compileSdkVersion 24
+    buildToolsVersion '24.0.1'
 
     defaultConfig {
         applicationId "com.be.android.library.worker.demo"
         minSdkVersion 15
-        targetSdkVersion 23
-        versionCode 1
-        versionName "0.2.2"
+        targetSdkVersion 24
+        versionCode VERSION_CODE
+        versionName VERSION_NAME
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
@@ -26,6 +26,12 @@ android {
         encoding = 'utf-8'
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
+    }
+
+    lintOptions {
+        quiet false
+        abortOnError false
+        ignoreWarnings false
     }
 
     buildTypes {
@@ -37,11 +43,11 @@ android {
 }
 
 dependencies {
-    compile project(':annotations')
-    compile project(':worker')
+    compile project(':droidworker-annotations')
+    compile project(':droidworker')
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'com.android.support:support-annotations:23.3.0'
-    compile 'com.android.support:appcompat-v7:23.3.0'
+    compile 'com.android.support:support-annotations:24.1.1'
+    compile 'com.android.support:appcompat-v7:24.1.1'
     compile 'com.squareup.retrofit2:retrofit:2.0.2'
     compile 'com.squareup.retrofit2:converter-jackson:2.0.2'
     compile 'com.fasterxml.jackson.core:jackson-core:2.5.3'
@@ -49,7 +55,7 @@ dependencies {
     compile 'com.squareup.okhttp3:okhttp:3.3.1'
     compile 'com.squareup.okio:okio:1.8.0'
 
-    apt project(':annotations-compiler')
+    apt project(':droidworker-annotations-compiler')
 
     androidTestCompile 'com.android.support.test:rules:0.4'
     androidTestCompile 'com.android.support.test.espresso:espresso-core:2.2.1'
@@ -61,6 +67,6 @@ dependencies {
 // Force support-annotations for espresso tests
 configurations.all {
     resolutionStrategy {
-        force 'com.android.support:support-annotations:23.3.0'
+        force 'com.android.support:support-annotations:24.1.1'
     }
 }

@@ -1,1 +1,1 @@
-include ':worker', ':demo', ':annotations', ':annotations-compiler'
+include ':droidworker', ':demo', ':droidworker-annotations', ':droidworker-annotations-compiler'

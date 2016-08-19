@@ -1,0 +1,85 @@
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+def artifact = new Properties()
+artifact.load(new FileInputStream("${project.buildDir}/../deploy.properties"))
+
+version=VERSION_NAME
+group=artifact.groupId
+
+install {
+    repositories.mavenInstaller {
+        pom.project {
+            packaging 'jar'
+            groupId artifact.groupId
+            artifactId artifact.id
+            version VERSION_NAME
+            name artifact.id
+            url artifact.websiteUrl
+            inceptionYear '2016'
+            description artifact.desc
+            licenses {
+                license {
+                    name 'MIT'
+                    url 'https://opensource.org/licenses/MIT'
+                    distribution 'repo'
+                }
+            }
+            developers {
+                developer {
+                    id DEVELOPER_ID
+                    name DEVELOPER_NAME
+                    email DEVELOPER_EMAIL
+                }
+            }
+            scm {
+                connection artifact.vcsUrl
+                developerConnection artifact.vcsUrl
+                url artifact.websiteUrl
+            }
+        }
+    }
+}
+
+def properties = new Properties()
+def propFile = "${System.properties['user.home']}${File.separator}.gradle${File.separator}bintray.properties" as File
+properties.load(propFile.newDataInputStream())
+
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+
+    dryRun = false
+    override = false
+
+    configurations = ['archives']
+    pkg {
+        repo = "maven"
+        name = artifact.name
+        desc = artifact.desc
+        websiteUrl = artifact.websiteUrl
+        issueTrackerUrl = artifact.issueTrackerUrl
+        vcsUrl = artifact.vcsUrl
+        licenses = artifact.licenses
+        publish = true
+        version {
+            name = VERSION_NAME
+            released = new Date()
+        }
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}

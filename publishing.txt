@@ -1,0 +1,3 @@
+Project is configured to publish release artifacts to https://bintray.com (worker library aar, annotations jar and annotations-compiler jar).
+Bintray user and key are read from ~/bintray.properties file.
+In order to publish an artifact you'll need to build project, perform 'install' task and then 'bintrayUpload'.

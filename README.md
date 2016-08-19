@@ -1,3 +1,4 @@
+ [ ![Download](https://api.bintray.com/packages/dzhey/maven/droidworker/images/download.svg) ](https://bintray.com/dzhey/maven/droidworker/_latestVersion) 
 # DroidWorker
 Flexible background processing library for Android made with respect to the app lifecycle
 ## Features
@@ -99,9 +100,21 @@ public class LoadUserJob extends LoadJob {
         return new LoadJobResult<>(response.body());
       }
 }
- ```
+```
 ## Setup
-_coming soon_
+```
+    compile 'com.github.dzhey:droidworker:0.2.3'
+    compile 'com.github.dzhey:droidworker-annotations:0.2.3'
+    apt 'com.github.dzhey:droidworker-annotations-compiler:0.2.3'
+```
+## ProGuard
+Add these lines to your ProGuard configuration if you use _droidworker-annotations_:
+```
+-keepclassmembers class * {
+    @com.be.android.library.worker.annotations.* *;
+}
+-keepclasseswithmembers public class **JobExtras { *; }
+```
 
 ## License
 MIT License
