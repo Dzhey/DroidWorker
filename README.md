@@ -113,12 +113,12 @@ dependencies {
 ```
 For details on using the apt scope see the [android-apt project](https://bitbucket.org/hvisser/android-apt).
 ## ProGuard
-Add these lines to your ProGuard configuration if you use _droidworker-annotations_:
+Add these lines to your ProGuard configuration:
 ```
 -keepclassmembers class * {
     @com.be.android.library.worker.annotations.* *;
 }
--keepclasseswithmembers public class **JobExtras { *; }
+-keepclasseswithmembers public class **Extras { *; }
 ```
 
 ## License
