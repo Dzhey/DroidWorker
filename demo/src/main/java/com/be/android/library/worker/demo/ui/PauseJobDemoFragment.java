@@ -93,9 +93,9 @@ public class PauseJobDemoFragment extends BaseFragment
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // We can start job from any activity's or fragment's lifecycle point
+        // We can start job observe any activity's or fragment's lifecycle point
         // and begin to listen to it's events using JobEventDispatcher
-        // BaseFragment subscribes to job events from onResume()
+        // BaseFragment subscribes to job events observe onResume()
         requestLoad(TAG_LOADER);
     }
 

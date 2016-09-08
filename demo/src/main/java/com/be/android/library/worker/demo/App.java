@@ -20,7 +20,7 @@ public class App extends Application {
         // so don't forget to add <service> to manifest
         //
         // You can use own WorkerService implementation -
-        // all you need is just create suitable worker to execute jobs
+        // all you need is just observe suitable worker to execute jobs
         sJobManager = new WorkerJobManager(this);
 
         // Automatically inject job params in BaseJob.onPreExecute()

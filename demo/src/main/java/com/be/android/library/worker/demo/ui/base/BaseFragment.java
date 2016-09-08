@@ -14,10 +14,15 @@ import com.be.android.library.worker.util.JobSelector;
 
 import java.util.List;
 
+import rx.Subscription;
+import rx.subscriptions.CompositeSubscription;
+
 public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbacks  {
 
     private JobEventDispatcher mEventDispatcher;
     private JobProgressTracker mProgressTracker;
+    private boolean mIsRegistered;
+    private CompositeSubscription mSubscriptions;
 
     private final JobLoader.JobLoaderCallbacks mJobLoaderCallbacks =
             new JobLoader.JobLoaderCallbacks() {
@@ -58,7 +63,9 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
 
     @Override
     public void onPause() {
-        mEventDispatcher.unregister(this);
+        if (mIsRegistered) {
+            mEventDispatcher.unregister(this);
+        }
         mProgressTracker.detach();
         mProgressTracker.setCallbacks(null);
 
@@ -69,9 +76,32 @@ public class BaseFragment extends Fragment implements JobLoader.JobLoaderCallbac
     public void onResume() {
         super.onResume();
 
-        mEventDispatcher.register(this);
+        registerEventDispatcher();
         mProgressTracker.attach();
         mProgressTracker.setCallbacks(mJobProgressTrackerCallbacks);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        if (mSubscriptions != null) {
+            mSubscriptions.clear();
+            mSubscriptions.unsubscribe();
+        }
+    }
+
+    protected void registerEventDispatcher() {
+        mEventDispatcher.register(this);
+        mIsRegistered = true;
+    }
+
+    protected void registerSubscription(Subscription subscription) {
+        if (mSubscriptions == null) {
+            mSubscriptions = new CompositeSubscription();
+        }
+
+        mSubscriptions.add(subscription);
     }
 
     public boolean handleBackPress() {

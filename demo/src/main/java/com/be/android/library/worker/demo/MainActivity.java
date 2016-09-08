@@ -17,6 +17,7 @@ import com.be.android.library.worker.demo.ui.JobCancelDemoFragment;
 import com.be.android.library.worker.demo.ui.MultiloadWorkDemoFragment;
 import com.be.android.library.worker.demo.ui.PauseJobDemoFragment;
 import com.be.android.library.worker.demo.ui.SimpleLoadDemoFragment;
+import com.be.android.library.worker.demo.ui.SimpleRxLoadDemoFragment;
 import com.be.android.library.worker.demo.ui.base.BaseFragment;
 import com.be.android.library.worker.demo.ui.base.FragmentContainerActivity;
 
@@ -90,22 +91,25 @@ public class MainActivity extends BaseActivity {
                 fragmentClass = SimpleLoadDemoFragment.class;
                 break;
             case 1:
-                fragmentClass = JobCancelDemoFragment.class;
+                fragmentClass = SimpleRxLoadDemoFragment.class;
                 break;
             case 2:
-                fragmentClass = PauseJobDemoFragment.class;
+                fragmentClass = JobCancelDemoFragment.class;
                 break;
             case 3:
-                fragmentClass = MultiloadWorkDemoFragment.class;
+                fragmentClass = PauseJobDemoFragment.class;
                 break;
             case 4:
                 fragmentClass = MultiloadWorkDemoFragment.class;
-                fragmentArgs.putBoolean(MultiloadWorkDemoFragment.ARG_ASYNC, true);
                 break;
             case 5:
-                fragmentClass = ForkJoinLoadDemoFragment.class;
+                fragmentClass = MultiloadWorkDemoFragment.class;
+                fragmentArgs.putBoolean(MultiloadWorkDemoFragment.ARG_ASYNC, true);
                 break;
             case 6:
+                fragmentClass = ForkJoinLoadDemoFragment.class;
+                break;
+            case 7:
                 fragmentClass = GitHubDemoFragment.class;
                 break;
 

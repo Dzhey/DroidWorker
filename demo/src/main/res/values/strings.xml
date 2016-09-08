@@ -6,7 +6,9 @@
 
     <string name="start">Start</string>
     <string name="simple_loader_demo">Simple loader demo</string>
+    <string name="simple_rx_loader_demo">Simple Rx loader demo</string>
     <string name="simple_loader_demo_hint">Load bitmap image from network</string>
+    <string name="simple_rx_loader_demo_hint">Load bitmap using Job and Observable</string>
     <string name="retrofit_demo">Retrofit GitHub demo</string>
     <string name="retrofit_demo_hint">Load company\'s repository list from GitHub (with pagination)</string>
     <string name="pause_demo">Job Pause/Resume</string>
@@ -24,6 +26,7 @@
     <string name="job_cancelled">Cancelled</string>
     <string name="job_in_progress">Working&#8230;</string>
     <string name="simple_loader_demo_description">The simplest job implementation uses URLConnection to load image from network</string>
+    <string name="simple_rx_loader_demo_description">A little example of how you can turn Job into Observable</string>
     <string name="cancel_demo_description">Background work may be easily cancelled</string>
     <string name="multiload_work_demo">Multiple job loaders</string>
     <string name="serial_work_demo">Serial data load demo</string>
@@ -36,6 +39,7 @@
 
     <array name="demo_list">
         <item>@string/simple_loader_demo</item>
+        <item>@string/simple_rx_loader_demo</item>
         <item>@string/cancel_demo</item>
         <item>@string/pause_demo</item>
         <item>@string/serial_work_demo</item>
@@ -46,6 +50,7 @@
 
     <array name="demo_list_hints">
         <item>@string/simple_loader_demo_hint</item>
+        <item>@string/simple_rx_loader_demo_hint</item>
         <item>@string/cancel_demo_hint</item>
         <item>@string/pause_demo_hint</item>
         <item>@string/serial_work_demo_hint</item>
