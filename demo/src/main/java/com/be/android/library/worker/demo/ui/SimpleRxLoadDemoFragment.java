@@ -58,7 +58,7 @@ public class SimpleRxLoadDemoFragment extends BaseFragment implements TitleProvi
         super.onResume();
 
         if (mProgressBar.getVisibility() == View.VISIBLE) {
-            // take last event and extract job result observe it
+            // take last event and extract job result
             registerSubscription(RxJobs.get().observe(
                     JobSelector.forJobId(requestLoad(TAG_IMAGE_LOADER)))
                         .observeOn(AndroidSchedulers.mainThread())
