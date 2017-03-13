@@ -105,14 +105,14 @@ public class LoadUserJob extends LoadJob {
 ```groovy
 dependencies {
     // main dependency
-    compile 'com.github.dzhey:droidworker:0.3.0'
+    compile 'com.github.dzhey:droidworker:0.3.1'
     
     // annotations are optional unless you use @JobExtra or @JobFlag
-    compile 'com.github.dzhey:droidworker-annotations:0.3.0'
-    apt 'com.github.dzhey:droidworker-annotations-compiler:0.3.0'
+    compile 'com.github.dzhey:droidworker-annotations:0.3.1'
+    apt 'com.github.dzhey:droidworker-annotations-compiler:0.3.1'
     
     // optional RxJava wrappers (see demo)
-    compile 'com.github.dzhey:droidworker-rxbindings:0.3.0'
+    compile 'com.github.dzhey:droidworker-rxbindings:0.3.1'
 }
 ```
 For details on using the apt scope see the [android-apt project](https://bitbucket.org/hvisser/android-apt).
