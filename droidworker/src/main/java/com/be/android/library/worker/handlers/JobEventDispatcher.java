@@ -267,6 +267,21 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             throw new IllegalArgumentException("listener should not be null");
         }
 
+        List<InvocationHandler> registry =
+                mHierarchyViewer.fetchInvocationHandlers(listener.getClass());
+        ListenerEntry entry = new ListenerEntry(new WeakReference<Object>(listener), registry);
+        registerImpl(listener, entry);
+    }
+
+    private void registerImpl(Object listener, ListenerEntry listenerEntry) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener should not be null");
+        }
+
+        if (listenerEntry == null) {
+            throw new IllegalArgumentException("listener entry should not be null");
+        }
+
         removePendingListener(listener);
 
         for (ListenerEntry entry : mListeners) {
@@ -279,10 +294,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             }
         }
 
-        List<InvocationHandler> registry = mHierarchyViewer.fetchInvocationHandlers(listener.getClass());
-        ListenerEntry entry = new ListenerEntry(new WeakReference<Object>(listener), registry);
-
-        mListeners.add(entry);
+        mListeners.add(listenerEntry);
 
         flushJobEvents(mListenerTag);
     }
@@ -295,15 +307,7 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             return;
         }
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... params) {
-                if (hasPendingListener(listener)) {
-                    register(listener);
-                }
-                return null;
-            }
-        }.execute();
+        newRegisterTask(listener).execute();
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -321,15 +325,31 @@ public class JobEventDispatcher implements JobEventHandlerInterface {
             }
         }
 
-        new AsyncTask<Void, Void, Void>() {
+        newRegisterTask(listener).executeOnExecutor(sAsyncExecutor);
+    }
+
+    private AsyncTask<Void, Void, Void> newRegisterTask(final Object listener) {
+        return new AsyncTask<Void, Void, Void>() {
+            private ListenerEntry mListenerEntry;
+
             @Override
             protected Void doInBackground(Void... params) {
                 if (hasPendingListener(listener)) {
-                    register(listener);
+                    mListenerEntry = new ListenerEntry(
+                            new WeakReference<Object>(listener),
+                            mHierarchyViewer.fetchInvocationHandlers(listener.getClass()));
                 }
+
                 return null;
             }
-        }.executeOnExecutor(sAsyncExecutor);
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                if (mListenerEntry != null) {
+                    registerImpl(listener, mListenerEntry);
+                }
+            }
+        };
     }
 
     public void unregister(Object listener) {
