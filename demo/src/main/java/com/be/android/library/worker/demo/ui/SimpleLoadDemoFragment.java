@@ -30,7 +30,7 @@ public class SimpleLoadDemoFragment extends BaseFragment implements TitleProvide
 
     private static final String TAG_IMAGE_LOADER = "SimpleLoadDemoFragment_loader";
     private static final String IMG_URL =
-            "http://static.communitytable.parade.com/wp-content/uploads/2013/12/marshmallows_istockphoto-frt.jpg";
+            "http://images.techhive.com/images/article/2016/11/android-nougat-eating-100692101-large.jpg";
 
     private ProgressBar mProgressBar;
     private ImageView mImageView;

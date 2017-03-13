@@ -35,7 +35,7 @@ public class SimpleRxLoadDemoFragment extends BaseFragment implements TitleProvi
 
     private static final String TAG_IMAGE_LOADER = "SimpleRxLoadDemoFragment_loader";
     private static final String IMG_URL =
-            "https://lh3.googleusercontent.com/-Qp7luSMArJs/AAAAAAAAAAI/AAAAAAAAAAU/B7YxYtLi_co/s265-c-k-no/photo.jpg";
+            "http://images.techhive.com/images/article/2016/11/android-nougat-eating-100692101-large.jpg";
 
     private ProgressBar mProgressBar;
     private ImageView mImageView;
