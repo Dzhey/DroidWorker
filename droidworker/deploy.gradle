@@ -16,7 +16,7 @@ install {
             version VERSION_NAME
             name artifact.id
             url artifact.websiteUrl
-            inceptionYear '2016'
+            inceptionYear '2017'
             description artifact.desc
             licenses {
                 license {
