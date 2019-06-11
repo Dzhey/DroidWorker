@@ -13,7 +13,6 @@ public class HierarchyViewer {
 
     private static final Map<String, List<InvocationHandler>> sHandlersMap;
     private final List<InvocationHandlerProvider> mProviders;
-    private final String mPackageName;
 
     static {
         sHandlersMap = new HashMap<String, List<InvocationHandler>>();
@@ -21,7 +20,6 @@ public class HierarchyViewer {
 
     public HierarchyViewer(Context context) {
         mProviders = new ArrayList<InvocationHandlerProvider>();
-        mPackageName = context.getPackageName();
     }
 
     public void registerInvocationHandlerProvider(InvocationHandlerProvider provider) {
@@ -32,7 +30,7 @@ public class HierarchyViewer {
         mProviders.remove(provider);
     }
 
-    protected InvocationHandlerProvider getInvocationHandlerProvider(Class<?> type, Method method) {
+    private InvocationHandlerProvider getInvocationHandlerProvider(Class<?> type, Method method) {
         for (InvocationHandlerProvider provider : mProviders) {
             for (Annotation annotation : method.getDeclaredAnnotations()) {
                 if (provider.canCreateInvocationHandler(annotation)) {
@@ -51,12 +49,7 @@ public class HierarchyViewer {
 
         Class<?> lookupType = type;
         List<InvocationHandler> handlers = new ArrayList<InvocationHandler>();
-        while (Object.class.equals(lookupType) == false) {
-            final Package packageInfo = lookupType.getPackage();
-            if (packageInfo != null && packageInfo.getName().startsWith(mPackageName) == false) {
-                break;
-            }
-
+        while (!Object.class.equals(lookupType)) {
             for (Method method : lookupType.getDeclaredMethods()) {
                 InvocationHandlerProvider provider = getInvocationHandlerProvider(type, method);
                 if (provider != null) {
