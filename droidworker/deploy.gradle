@@ -2,7 +2,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 def artifact = new Properties()
-artifact.load(new FileInputStream("${project.buildDir}/../deploy.properties"))
+artifact.load(new FileInputStream("${project.rootDir}/droidworker/deploy.properties"))
 
 version=VERSION_NAME
 group=artifact.groupId
