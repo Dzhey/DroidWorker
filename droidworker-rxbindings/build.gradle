@@ -7,12 +7,12 @@ configurations {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 30
+    buildToolsVersion "30.0.2"
 
     defaultConfig {
         minSdkVersion 9
-        targetSdkVersion 25
+        targetSdkVersion 30
         versionCode VERSION_CODE
         versionName VERSION_NAME
 
@@ -28,8 +28,6 @@ android {
 }
 
 dependencies {
-    provided 'io.reactivex:rxjava:1.1.10'
-    provided project(path: ':droidworker')
+    compileOnly 'io.reactivex:rxjava:1.1.10'
+    compileOnly project(path: ':droidworker')
 }
-
-apply from: 'deploy.gradle'

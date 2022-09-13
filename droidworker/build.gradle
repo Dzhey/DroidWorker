@@ -7,12 +7,12 @@ configurations {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '25.0.2'
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
 
     defaultConfig {
         minSdkVersion 8
-        targetSdkVersion 25
+        targetSdkVersion 30
         versionCode VERSION_CODE
         versionName VERSION_NAME
     }
@@ -58,17 +58,17 @@ sourceSets {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     // JUnit, Mockito and PowerMock
-    testCompile 'junit:junit:4.12'
-    testCompile ("org.mockito:mockito-core:1.10.19") {
+    testImplementation 'junit:junit:4.12'
+    testImplementation ("org.mockito:mockito-core:1.10.19") {
         exclude group: 'org.hamcrest'
     }
-    testCompile ('org.powermock:powermock-module-junit4:1.6.4') {
+    testImplementation ('org.powermock:powermock-module-junit4:1.6.4') {
         exclude group: 'org.hamcrest'
     }
-    testCompile ('org.powermock:powermock-api-mockito:1.6.4') {
+    testImplementation ('org.powermock:powermock-api-mockito:1.6.4') {
         exclude group: 'org.hamcrest'
     }
 }
@@ -78,5 +78,3 @@ tasks.withType(Test) {
         events 'started', 'passed'
     }
 }
-
-apply from: 'deploy.gradle'

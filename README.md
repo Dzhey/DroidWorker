@@ -125,6 +125,10 @@ Add these lines to your ProGuard configuration:
 -keepclasseswithmembers public class **Extras { *; }
 ```
 
+# Debug
+run command ```./gradlew --no-daemon -Dorg.gradle.debug=true :demo:clean :demo:compileDebugJavaWithJavac```
+add remote debug jvm configuration to run configurations, run it to debug
+
 ## License
 MIT License
 

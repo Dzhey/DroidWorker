@@ -1,29 +1,28 @@
 apply plugin: 'java'
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+sourceCompatibility = 11
+targetCompatibility = 11
 
 configurations {
-    devCompile
-    compile.extendsFrom devCompile
+    devImplementation
+    implementation.extendsFrom devImplementation
 }
 
 dependencies {
-    devCompile files('libs/com.sun.tools.jar')
-    devCompile project(':droidworker-annotations')
-    compile 'com.google.auto.service:auto-service:1.0-rc2'
-    compile 'com.squareup:javapoet:1.6.1'
+    devImplementation files('libs/com.sun.tools.jar')
+    devImplementation project(':droidworker-annotations')
+    implementation 'com.google.auto.service:auto-service:1.0-rc4'
+    implementation 'com.squareup:javapoet:1.6.1'
 }
 
 task createJarWithDependencies(type: Jar) {
     baseName = "worker-annotations-compiler-with-dependencies"
 
     from {
-        (configurations.compile - configurations.devCompile).collect {
+        (configurations.implementation - configurations.devImplementation).collect {
             it.isDirectory() ? it : zipTree(it)
         }
     }
 
     with jar
 }
-apply from: 'deploy.gradle'
